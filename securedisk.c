@@ -22,7 +22,7 @@ int main(int argc, char *argv[]){
      *
      * deenrypt,
      * decompress */
-    return 0;
+    return 1;
 }
 
 int encrypt_file(FILE* file){
