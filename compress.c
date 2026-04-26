@@ -1,4 +1,5 @@
 #include "securedisk.h"
+#include "compress.h"
 
 /*
 LZW ENCODING
@@ -16,107 +17,125 @@ LZW ENCODING
   11         END WHILE
   12    output code for P 
 
+note concept of the LZ triple, noted that making a struct that can store a piece of compressed data may help
+
+after that point, convert text in to lz triples
+
+pattern match (any algorithm..)
+
+convert triples to bits
+
 */
 
-int lz77_compress (char *uncompressed_text, int uncompressed_size, char *compressed_text, char pointer_length_width)
-{
-    short pointer_pos, temp_pointer_pos, output_pointer, pointer_length, temp_pointer_length;
-    int compressed_pointer, output_size, coding_pos, output_lookahead_ref, look_behind, look_ahead;
-    short pointer_pos_max, pointer_length_max;
-    pointer_pos_max = pow(2, 16 - pointer_length_width);
-    pointer_length_max = pow(2, pointer_length_width);
 
-    *((int *) compressed_text) = uncompressed_size;
-    *(compressed_text + 4) = pointer_length_width;
-    compressed_pointer = output_size = 5;
-    
-    for(coding_pos = 0; coding_pos < uncompressed_size; ++coding_pos)
-    {
-        pointer_pos = 0;
-        pointer_length = 0;
-        for(temp_pointer_pos = 1; (temp_pointer_pos < pointer_pos_max) && (temp_pointer_pos <= coding_pos); ++temp_pointer_pos)
-        {
-            look_behind = coding_pos - temp_pointer_pos;
-            look_ahead = coding_pos;
-            for(temp_pointer_length = 0; uncompressed_text[look_ahead++] == uncompressed_text[look_behind++]; ++temp_pointer_length)
-                if(temp_pointer_length == pointer_length_max)
-                    break;
-            if(temp_pointer_length > pointer_length)
-            {
-                pointer_pos = temp_pointer_pos;
-                pointer_length = temp_pointer_length;
-                if(pointer_length == pointer_length_max)
-                    break;
-            }
-        }
-        coding_pos += pointer_length;
-        if((coding_pos == uncompressed_size) && pointer_length)
-        {
-            output_pointer = (pointer_length == 1) ? 0 : ((pointer_pos << pointer_length_width) | (pointer_length - 2));
-            output_lookahead_ref = coding_pos - 1;
-        }
-        else
-        {
-            output_pointer = (pointer_pos << pointer_length_width) | (pointer_length ? (pointer_length - 1) : 0);
-            output_lookahead_ref = coding_pos;
-        }
-        *((short *) (compressed_text + compressed_pointer)) = output_pointer;
-        compressed_pointer += 2;
-        *(compressed_text + compressed_pointer++) = *(uncompressed_text + output_lookahead_ref);
-        output_size += 3;
+
+
+/* temp code from elsewhere just to have as a scaffold */
+
+
+
+#pragma pack(push, 1) // there is a clang warn here, seems clangd bug
+typedef struct Header {
+  int szIn;
+  char width;
+} Header_t;
+#pragma pack(pop)
+_Static_assert(5 == sizeof(Header_t), "Wrong alignment");
+
+#pragma pack(push, 1)
+typedef struct Body {
+  struct {
+    char lo;
+    char hi;
+  } distlen; // distance and length to match, lower @width bits it len
+  char symbol;
+} Body_t;
+#pragma pack(pop)
+_Static_assert(3 == sizeof(Body_t), "Wrong alignment");
+
+typedef struct EncodedData {
+  Header_t header;
+  Body_t body[0];
+} EncodedData_t;
+
+int encode(const char *in, int szIn, char *out, char wid) {
+  EncodedData_t *outdat = (EncodedData_t *)out;
+
+  const long maxDistMatch = 1 << ((8 * sizeof(long)) - wid);
+  const long maxLenMatch = 1 << (wid);
+
+  // put raw data size and @len width in the output header
+  outdat->header.szIn = szIn;
+  outdat->header.width = wid;
+
+  // real compressed data begin
+  int ofsSym, ofsOut = 0;
+  for (int ofsIn = 0; ofsIn < szIn; ++ofsIn, ++ofsOut) {
+    long distMatch = 0, lenMatch = 0, dist_len;
+
+    // check search buffer
+    for (long dm = 1, lm; (dm < maxDistMatch) && (dm <= ofsIn); ++dm) {
+      int ofsInNew = ofsIn;
+      int ofsMatch = ofsIn - dm;
+
+      // check match length
+      for (lm = 0; ofsInNew < szIn && in[ofsInNew++] == in[ofsMatch++]; ++lm) {
+        if (lm == maxLenMatch)
+          break;
+      }
+
+      // may have multiple repeat substring, choose better match
+      if (lm > lenMatch) {
+        distMatch = dm;
+        lenMatch = lm;
+
+        // best case found
+        if (lenMatch == maxLenMatch)
+          break;
+      }
     }
 
-    return output_size;
+    // construct dist|len, the lower @wid bits is len
+    ofsIn += lenMatch;
+    if ((ofsIn == szIn) && lenMatch) {
+      dist_len = (lenMatch == 1) ? 0 : ((distMatch << wid) | (lenMatch - 2));
+      ofsSym = ofsIn - 1;
+    } else {
+      dist_len = (distMatch << wid) | (lenMatch ? (lenMatch - 1) : 0);
+      ofsSym = ofsIn;
+    }
+
+    // write data body
+    outdat->body[ofsOut].distlen.lo = dist_len & 0xFF;
+    outdat->body[ofsOut].distlen.hi = (dist_len >> 8) & 0xFF;
+    outdat->body[ofsOut].symbol = *(in + ofsSym);
+  }
+  return sizeof(Header_t) + sizeof(Body_t) * ofsOut;
 }
 
-long fsize (FILE *in)
-{
-    long pos, length;
-    pos = ftell(in);
-    fseek(in, 0L, SEEK_END);
-    length = ftell(in);
-    fseek(in, pos, SEEK_SET);
-    return length;
-}
+int decode(const char *in, char *out) {
+  const EncodedData_t *indat = (EncodedData_t *)in;
 
-int file_lz77_compress (char *filename_in, char *filename_out, size_t malloc_size, char pointer_length_width)
-{
-    FILE *in, *out;
-    char *uncompressed_text, *compressed_text;
-    int uncompressed_size, compressed_size;
+  char wid = indat->header.width;
+  int szOut = indat->header.szIn;
+  long dist_len_mask = (1 << wid) - 1;
 
-    in = fopen(filename_in, "r");
-    if(in == NULL)
-        return 0;
-    uncompressed_size = fsize(in);
-    uncompressed_text = malloc(uncompressed_size);
-    if((uncompressed_size != fread(uncompressed_text, 1, uncompressed_size, in)))
-        return 0;
-    fclose(in);
+  // start decoding body
+  int ofsOut = 0;
+  for (int ofsIn = 0; ofsOut < szOut; ++ofsIn, ++ofsOut) {
+    long lenMatch, distMatch, dist_len;
 
-    compressed_text = malloc(malloc_size);
+    *((char *)&dist_len) = indat->body[ofsIn].distlen.lo;
+    *((char *)&dist_len + 1) = indat->body[ofsIn].distlen.hi;
 
-    compressed_size = lz77_compress(uncompressed_text, uncompressed_size, compressed_text, pointer_length_width);
+    // copy repeated data from window
+    distMatch = dist_len >> wid;
+    lenMatch = distMatch ? ((dist_len & dist_len_mask) + 1) : 0;
+    if (distMatch)
+      for (int ofsMatch = ofsOut - distMatch; lenMatch > 0; --lenMatch)
+        out[ofsOut++] = out[ofsMatch++];
+    *(out + ofsOut) = indat->body[ofsIn].symbol;
+  }
 
-    out = fopen(filename_out, "w");
-    if(out == NULL)
-        return 0;
-    if((compressed_size != fwrite(compressed_text, 1, compressed_size, out)))
-        return 0;
-    fclose(out);
-
-    return compressed_size;
-}
-
-int main (int argc, char const *argv[])
-{
-    FILE *in;
-    in = fopen("./lz.c", "r");
-    if(in == NULL)
-        return 0;
-    printf("Original size: %ld\n", fsize(in));
-    fclose(in);
-    for(char i = 1; i < 16; ++i)
-        printf("Compressed (%i): %u, decompressed: (%u)\n", i, file_lz77_compress("./lz.c", "lz.c.z77", 10000000, i), file_lz77_decompress("./lz.c.z77", "lz-2.c"));
-    return 0;
+  return ofsOut;
 }
