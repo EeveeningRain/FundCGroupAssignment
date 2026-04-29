@@ -1,0 +1,36 @@
+---
+# To Use in VSCode: ctrl+shift+p -> "Format Document"
+
+# Clang-Format configuration for Lab requirements
+Language: Cpp
+BasedOnStyle: LLVM
+
+# Code width must be a fixed value (GCC standard)
+ColumnLimit: 80
+
+# Indent with space characters ONLY (1 tab = 4 spaces)
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+
+# Brackets must be aligned (Allman style)
+BreakBeforeBraces: Allman
+
+# Ensure blocks and cases are indented properly
+IndentCaseLabels: true
+NamespaceIndentation: All
+
+# Alignment settings for readability
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: false
+
+# Line break handling for long codes
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+
+# Keep pointer alignment consistent
+PointerAlignment: Right
+---
