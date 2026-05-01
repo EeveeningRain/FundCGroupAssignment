@@ -1,4 +1,4 @@
-#ifndef
+#ifndef encryption
 #define encryption
 
 #endif

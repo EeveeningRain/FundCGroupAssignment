@@ -6,9 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>
 
-int encode(const char *i, int isz, char *o, char w);
-int decode(const char *i, char *o);
+uint32_t encode(const uint8_t *i, uint32_t isz, uint8_t *o, uint8_t w);
+uint32_t decode(const uint8_t *i, uint8_t *o);
 
 
 #endif
