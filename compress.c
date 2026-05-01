@@ -1,4 +1,3 @@
-#include "securedisk.h"
 #include "compress.h"
 
 /*

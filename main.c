@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "encryption.h"
+#include "compress.h"
 #include "helpers.h"
 
 /* -------------------------------------------------------------------------
