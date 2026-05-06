@@ -12,12 +12,14 @@
 /*
  * list_append
  * -----------
- * Allocates a new BlockNode, fills it with (byte_block_lower, byte_block_upper), and appends it to the
- * list tracked by *head and *tail.  Both pointers are updated as needed.
+ * Allocates a new BlockNode, fills it with (byte_block_lower,
+ * byte_block_upper), and appends it to the list tracked by *head and *tail.
+ * Both pointers are updated as needed.
  *
  * Returns a pointer to the new node, or NULL if malloc fails.
  */
-BlockNode *list_append(BlockNode **head, BlockNode **tail, int byte_block_lower, int byte_block_upper)
+BlockNode *list_append(BlockNode **head, BlockNode **tail, int byte_block_lower,
+                       int byte_block_upper)
 {
     BlockNode *node = (BlockNode *)malloc(sizeof(BlockNode));
     if (node == NULL)
@@ -94,13 +96,15 @@ size_t list_length(const BlockNode *head)
  * machine can be decrypted on any other machine regardless of native byte
  * order (e.g. x86 little-endian vs ARM big-endian).
  */
-void pack_block(const unsigned char bytes[BLOCK_BYTES], int byte_block[2])
+void pack_block(int byte_block[2], const unsigned char bytes[BLOCK_BYTES])
 {
-    byte_block[0] = ((unsigned int)bytes[0] << 24) | ((unsigned int)bytes[1] << 16) |
-           ((unsigned int)bytes[2] << 8) | (unsigned int)bytes[3];
+    byte_block[0] = ((unsigned int)bytes[0] << 24) |
+                    ((unsigned int)bytes[1] << 16) |
+                    ((unsigned int)bytes[2] << 8) | (unsigned int)bytes[3];
 
-    byte_block[1] = ((unsigned int)bytes[4] << 24) | ((unsigned int)bytes[5] << 16) |
-           ((unsigned int)bytes[6] << 8) | (unsigned int)bytes[7];
+    byte_block[1] = ((unsigned int)bytes[4] << 24) |
+                    ((unsigned int)bytes[5] << 16) |
+                    ((unsigned int)bytes[6] << 8) | (unsigned int)bytes[7];
 }
 
 /*
@@ -143,40 +147,6 @@ static const char *basename_only(const char *path)
         p++;
     }
     return last;
-}
-
-/* CBC helpers */
-static void xor_block(int byte_block[2], const int iv[2])
-{
-    byte_block[0] ^= iv[0];
-    byte_block[1] ^= iv[1];
-}
-
-static void copy_block(int dst[2], const int src[2])
-{
-    dst[0] = src[0];
-    dst[1] = src[1];
-}
-
-void random_iv(int iv[2])
-{
-    iv[0] = ((rand() & 0xFFFF) << 16) | (rand() & 0xFFFF);
-    iv[1] = ((rand() & 0xFFFF) << 16) | (rand() & 0xFFFF);
-}
-
-int pop_block(BlockNode **head, int cipher_block[2])
-{
-    BlockNode *node;
-
-    if (*head == NULL)
-        return -1;
-
-    node = *head;
-    *head = node->next_byte_block;
-    cipher_block[0] = node->byte_block[0];
-    cipher_block[1] = node->byte_block[1];
-    free(node);
-    return 0;
 }
 
 /*
@@ -247,37 +217,80 @@ int files_are_same(const char *a, const char *b)
 /*
  * extract_name
  * -------------
- * Extracts the filename from a full path, excluding the directory and 
+ * Extracts the filename from a full path, excluding the directory and
  * extension.
  */
-void extract_name(const char *path, char *out, size_t out_size) {
+void extract_name(const char *path, char *out, size_t out_size)
+{
     const char *start;
     const char *end;
     size_t len;
 
     /* Find last backslash */
     start = strrchr(path, '\\');
-    if (start != NULL) {
-        start++;  /* move past '\' */
-    } else {
+    if (start != NULL)
+    {
+        start++; /* move past '\' */
+    }
+    else
+    {
         start = path; /* no path, just filename */
     }
 
     /* Find last dot */
     end = strrchr(start, '.');
-    if (end == NULL) {
+    if (end == NULL)
+    {
         end = start + strlen(start); /* no extension */
     }
 
     /* Calculate length safely */
     len = (size_t)(end - start);
 
-    if (len >= out_size) {
+    if (len >= out_size)
+    {
         len = out_size - 1; /* prevent overflow */
     }
 
     memcpy(out, start, len);
     out[len] = '\0';
+}
+
+/* =========================================================================
+ * CBC (CIPHER BLOCK CHAINING) HELPERS
+ * ========================================================================= */
+
+static void xor_block(int byte_block[2], const int iv[2])
+{
+    byte_block[0] ^= iv[0];
+    byte_block[1] ^= iv[1];
+}
+
+static void copy_block(int dst[2], const int src[2])
+{
+    dst[0] = src[0];
+    dst[1] = src[1];
+}
+
+void random_iv(int iv[2])
+{
+    iv[0] = ((rand() & 0xFFFF) << 16) | (rand() & 0xFFFF);
+    iv[1] = ((rand() & 0xFFFF) << 16) | (rand() & 0xFFFF);
+}
+
+int pop_block(BlockNode **head, int cipher_block[2])
+{
+    BlockNode *node;
+
+    if (*head == NULL)
+        return -1;
+
+    node = *head;
+    *head = node->next_byte_block;
+    cipher_block[0] = node->byte_block[0];
+    cipher_block[1] = node->byte_block[1];
+    free(node);
+    return 0;
 }
 
 /* =========================================================================
@@ -288,7 +301,7 @@ void extract_name(const char *path, char *out, size_t out_size) {
  * pack_key
  * --------
  * Packs 16 raw key bytes into four 32-bit words, big-endian.
- * Use this when the caller supplies a binary key (e.g. from a key file).
+ * Used if the caller supplies a binary key (e.g. from a key file).
  */
 void pack_key(const unsigned char raw[KEY_BYTES], int key[KEY_WORDS])
 {
@@ -396,7 +409,7 @@ BlockNode *file_to_list(const char *filename, size_t *original_size)
         /* Pack the 8 bytes into two ints and append to list */
         {
             int byte_block[2];
-            pack_block(buf, byte_block);
+            pack_block(byte_block, buf);
             if (list_append(&head, &tail, byte_block[0], byte_block[1]) == NULL)
             {
                 /* malloc failed mid-way - clean up and abort */
@@ -428,9 +441,8 @@ BlockNode *file_to_list(const char *filename, size_t *original_size)
     *original_size = total;
 
 #ifdef DEBUG
-    fprintf(stderr, "[DEBUG] file_to_list: read %lu bytes, %lu blocks\n", 
-        (unsigned long)total,
-        (unsigned long)list_length(head));
+    fprintf(stderr, "[DEBUG] file_to_list: read %lu bytes, %lu blocks\n",
+            (unsigned long)total, (unsigned long)list_length(head));
 #endif
 
     return head;
@@ -479,7 +491,8 @@ int list_to_file(const char *filename, const BlockNode *head,
         }
 
 #ifdef DEBUG
-        debug_print_block("WRITE", current_byte_block->byte_block[0], current_byte_block->byte_block[1]);
+        debug_print_block("WRITE", current_byte_block->byte_block[0],
+                          current_byte_block->byte_block[1]);
 #endif
 
         written += to_write;
@@ -489,9 +502,8 @@ int list_to_file(const char *filename, const BlockNode *head,
     fclose(fp);
 
 #ifdef DEBUG
-    fprintf(stderr, "[DEBUG] list_to_file: wrote %lu bytes to '%s'\n", 
-            (unsigned long)written,
-            filename);
+    fprintf(stderr, "[DEBUG] list_to_file: wrote %lu bytes to '%s'\n",
+            (unsigned long)written, filename);
 #endif
 
     return 0;
@@ -527,7 +539,8 @@ void list_encipher(BlockNode *head, unsigned int rounds,
         copy_block(prev_cipher, byte_block);
 
 #ifdef DEBUG
-        debug_print_block("ENCIPHERED", current_byte_block->byte_block[0], current_byte_block->byte_block[1]);
+        debug_print_block("ENCIPHERED", current_byte_block->byte_block[0],
+                          current_byte_block->byte_block[1]);
 #endif
 
         current_byte_block = current_byte_block->next_byte_block;
@@ -564,7 +577,8 @@ void list_decipher(BlockNode *head, unsigned int rounds,
         copy_block(prev_cipher, cipher_block);
 
 #ifdef DEBUG
-        debug_print_block("DECIPHERED", current_byte_block->byte_block[0], current_byte_block->byte_block[1]);
+        debug_print_block("DECIPHERED", current_byte_block->byte_block[0],
+                          current_byte_block->byte_block[1]);
 #endif
 
         current_byte_block = current_byte_block->next_byte_block;
@@ -614,7 +628,7 @@ int header_encode(BlockNode **head, const FileHeader *hdr, unsigned int rounds,
 
     /* ---- Block 1: magic ------------------------------------------------ */
     memcpy(buf, HEADER_MAGIC, BLOCK_BYTES);
-    pack_block(buf, header_blocks[1]);
+    pack_block(header_blocks[1], buf);
 
     /* ---- Block 2: original size --------------------------------------- */
     /* Pack original_size as 8 bytes in big-endian format */
@@ -627,7 +641,7 @@ int header_encode(BlockNode **head, const FileHeader *hdr, unsigned int rounds,
             sz_copy = sz_copy >> 8;
         }
     }
-    pack_block(buf, header_blocks[2]);
+    pack_block(header_blocks[2], buf);
 
     /* ---- Blocks 3-10: filename ---------------------------------------- */
     {
@@ -643,7 +657,7 @@ int header_encode(BlockNode **head, const FileHeader *hdr, unsigned int rounds,
                 size_t idx = (size_t)(offset + j);
                 buf[j] = (idx < bname_len) ? (unsigned char)bname[idx] : 0;
             }
-            pack_block(buf, header_blocks[3 + i]);
+            pack_block(header_blocks[3 + i], buf);
         }
     }
 
@@ -768,10 +782,12 @@ int header_decode(BlockNode **head, FileHeader *hdr, unsigned int rounds,
 
 #ifdef DEBUG
 
-void debug_print_block(const char *label, int byte_block_lower, int byte_block_upper)
+void debug_print_block(const char *label, int byte_block_lower,
+                       int byte_block_upper)
 {
-    fprintf(stderr, "[DEBUG] %-12s  byte_block[0]=0x%08X  byte_block[1]=0x%08X\n", label,
-            (unsigned int)byte_block_lower, (unsigned int)byte_block_upper);
+    fprintf(
+        stderr, "[DEBUG] %-12s  byte_block[0]=0x%08X  byte_block[1]=0x%08X\n",
+        label, (unsigned int)byte_block_lower, (unsigned int)byte_block_upper);
 }
 
 void debug_print_key(int const key[KEY_WORDS])
@@ -792,8 +808,10 @@ void debug_print_list(const BlockNode *head)
     fprintf(stderr, "[DEBUG] --- Block List ---\n");
     while (current_byte_block != NULL)
     {
-        fprintf(stderr, "[DEBUG]  [%3d]  byte_block[0]=0x%08X  byte_block[1]=0x%08X\n", idx,
-                (unsigned int)current_byte_block->byte_block[0], (unsigned int)current_byte_block->byte_block[1]);
+        fprintf(stderr,
+                "[DEBUG]  [%3d]  byte_block[0]=0x%08X  byte_block[1]=0x%08X\n",
+                idx, (unsigned int)current_byte_block->byte_block[0],
+                (unsigned int)current_byte_block->byte_block[1]);
         idx++;
         current_byte_block = current_byte_block->next_byte_block;
     }
