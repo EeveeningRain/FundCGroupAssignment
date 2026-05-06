@@ -33,7 +33,7 @@
 #define HEADER_TOTAL_BYTES  88         /* HEADER_TOTAL_BLOCKS * BLOCK_BYTES */
 
 /* =========================================================================
- * FILE METADATA  —  populated by header_encode, filled by header_decode
+ * FILE METADATA  —  populated by header_encode, decoded by header_decode
  * ========================================================================= */
 
 typedef struct
@@ -62,7 +62,7 @@ typedef struct BlockNode
  * ========================================================================= */
 
 /* Allocate and append a new node; returns pointer to it, NULL on failure */
-BlockNode *list_append(BlockNode **head, BlockNode **tail, int v0, int v1);
+BlockNode *list_append(BlockNode **head, BlockNode **tail, int byte_block_lower, int byte_block_upper);
 
 /* Free every node in the list */
 void list_free(BlockNode *head);
@@ -74,7 +74,7 @@ size_t list_length(const BlockNode *head);
  * CBC MODE HELPERS
  * ========================================================================= */
 
-/* Generate a random IV for CBC mode */
+/* Generate a random Initialisation Vector for CBC */
 void random_iv(int iv[2]);
 
 /* Pop and remove the first block from the list */
@@ -85,10 +85,10 @@ int pop_block(BlockNode **head, int cipher_block[2]);
  * ========================================================================= */
 
 /* Pack 8 bytes (big-endian) into an int[2] block */
-void pack_block(const unsigned char bytes[BLOCK_BYTES], int v[2]);
+void pack_block(int byte_block[2], const unsigned char bytes[BLOCK_BYTES]);
 
 /* Unpack an int[2] block into 8 bytes (big-endian) */
-void unpack_block(const int v[2], unsigned char bytes[BLOCK_BYTES]);
+void unpack_block(const int byte_block[2], unsigned char bytes[BLOCK_BYTES]);
 
 /* =========================================================================
  * KEY HELPERS
