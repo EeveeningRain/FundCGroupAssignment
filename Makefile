@@ -7,7 +7,7 @@
 
 CC      = gcc
 CFLAGS  = -Wall -Wextra -pedantic -std=c90
-TARGET  = encryption_test_prog
+TARGET  = super_secure_disk.exe
 SRCS    = main.c encryption.c compress.c helpers.c
 OBJS    = $(SRCS:.c=.o)
 

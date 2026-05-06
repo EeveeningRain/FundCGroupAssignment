@@ -48,9 +48,9 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
 #define MODE_ENCRYPT    1
 #define MODE_DECRYPT    2
 #define MODE_COMPRESS   3
-#define MODE_DECOMPRESS 4
+#define MODE_UNCOMPRESS 4
 #define MODE_COMPRESS_AND_ENCRYPT   5
-#define MODE_DECRYPT_AND_DECOMPRESS 6
+#define MODE_DECRYPT_AND_UNCOMPRESS 6
 
 /* Buffer size for auto-derived output filenames */
 #define OUTFILE_BUF 4096
@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
 
     int mode = MODE_NONE;
     char *infile = NULL;
+    char *tempfile = "tempfile.tmp";
     char *outfile = NULL;
     char *passphrase = NULL;
     unsigned int rounds = ROUNDS_DEFAULT;
@@ -82,6 +83,22 @@ int main(int argc, char *argv[])
         do_encryption(mode, infile, outfile, passphrase, rounds);
     }
 
+    if(mode == MODE_COMPRESS || mode == MODE_UNCOMPRESS){
+        do_compression(mode, infile, outfile);
+    }
+
+    if(mode == MODE_COMPRESS_AND_ENCRYPT){
+        do_compression(mode, infile, tempfile);
+        do_encryption(mode, tempfile, outfile, passphrase, rounds);
+        remove(tempfile);
+    }
+
+    if(mode == MODE_DECRYPT_AND_UNCOMPRESS){
+        do_encryption(mode, infile, tempfile, passphrase, rounds);
+        do_compression(mode, tempfile, outfile);
+        remove(tempfile);
+    }
+
     return 0;
 }
 
@@ -97,7 +114,23 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
     int i;
     for (i = 1; i < argc; i++)
     {
-        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0)
+        if(strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compress") == 0){
+            if (*mode == MODE_UNCOMPRESS)
+            {
+                fprintf(stderr, "ERROR: cannot specify both -c and -u\n");
+                return -1;
+            }
+            *mode = MODE_COMPRESS;
+        }
+        else if(strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--uncompress") == 0){
+            if (*mode == MODE_COMPRESS)
+            {
+                fprintf(stderr, "ERROR: cannot specify both -c and -u\n");
+                return -1;
+            }
+            *mode = MODE_UNCOMPRESS;
+        }
+        else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0)
         {
             if (*mode == MODE_DECRYPT)
             {
@@ -114,6 +147,18 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
                 return -1;
             }
             *mode = MODE_DECRYPT;
+        }
+        else if(strcmp(argv[i], "-z") == 0 || strcmp(argv[i], "--compressandencrypt") == 0){
+            if (*mode != MODE_NONE){
+                fprintf(stderr, "ERROR: cannot specify -z with other mode flags!\n");
+            }
+            *mode = MODE_COMPRESS_AND_ENCRYPT;
+        }
+        else if(strcmp(argv[i], "-x") == 0 || strcmp(argv[i], "--decryptanduncompress") == 0){
+            if (*mode != MODE_NONE){
+                fprintf(stderr, "ERROR: cannot specify -x with other mode flags!\n");
+            }
+            *mode = MODE_DECRYPT_AND_UNCOMPRESS;
         }
         else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
         {
@@ -271,18 +316,26 @@ static void print_usage(const char *full_path)
            filename);
     printf("  %s -d -i <infile> [-o <outfile>] -p <passphrase> [-r <N>]\n",
            filename);
+    printf("  %s -s -i <infile> [-o <outfile>] -p <passphrase> [-r <N>]\n",
+           filename);
     printf("\nOptions:\n");
-    printf("  -e            Encrypt\n");
-    printf("  -d            Decrypt\n");
-    printf("  -i <file>     Input file (any binary type)\n");
-    printf(
-        "  -o <file>     Output file (optional -- auto-derived if omitted)\n");
-    printf("  -p <phrase>   Passphrase  (use quotes for spaces)\n");
-    printf("  -r <N>        XTEA rounds (default 32; must match on decrypt)\n");
-    printf("  -h            Show this help\n");
-    printf("\nAuto-naming (when -o is omitted):\n");
-    printf("  Encrypt:  photo.jpg      ->  photo.jpg.enc\n");
-    printf("  Decrypt:  photo.jpg.enc  ->  photo.jpg\n");
-    printf(
-        "  Decrypt:  photo.jpg      ->  photo.jpg.dec  (no .enc to strip)\n\n");
+    printf("  -c,            --compress               Compress\n");
+    printf("  -u,            --uncompress             Uncompress\n");
+    printf("  -e,            --encrypt                Encrypt\n");
+    printf("  -d,            --decrypt                Decrypt\n");
+    printf("  -z,            --compressandencrypt     Compress & Encrypt\n");
+    printf("  -x             --decryptanduncompress   Decrypt & Uncompress\n");
+    printf("  -i <file>,     --input <file>           Input file (any binary type)\n");
+    printf("  -o <file>,     --output <file>          Output file (optional -- auto-derived if omitted)\n");
+    printf("  -p <phrase>,   --passphrase <phrase>    Passphrase  (use quotes for spaces)\n");
+    printf("  -r <num>,      --rounds <num>           XTEA rounds (default 32; must match on decrypt)\n");
+    printf("  -h,            --help                   Show this help\n");
+    printf("\nAuto-naming (when -o is omitted):\n"); 
+    printf("  Compress:      text.txt       ->  text.txt.lz77\n");
+    printf("  Uncompress:    text.txt.lz77  ->  text.txt\n");
+    printf("  Encrypt:       photo.jpg      ->  photo.jpg.enc\n");
+    printf("  Decrypt:       photo.jpg.enc  ->  photo.jpg\n");
+    printf("  Decrypt:       photo.jpg      ->  photo.jpg.dec  (no .enc to strip)\n\n");
+    printf("  Compress & Encrypt:   text.txt          -> text.txt.lz77.enc\n");
+    printf("  Decrypt & Uncompress: text.txt.lz77.enc -> text.txt\n");
 }

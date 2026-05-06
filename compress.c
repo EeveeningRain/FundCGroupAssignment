@@ -391,3 +391,14 @@ uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out
     /* return new, uncompressed size */
     return uncompressed_size;
 }
+
+int do_compression(const int mode, const char *infile, const char *outfile){
+
+    if(mode == 3 || mode == 5){ /* compress or compress & encrypt */
+        file_lz77_compress(infile, outfile, MALLOC_SIZE);
+    }
+    else if(mode == 4 || mode == 6){
+        file_lz77_decompress(infile, outfile);
+    }
+    return 0;
+}
