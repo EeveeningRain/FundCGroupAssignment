@@ -24,7 +24,7 @@
  * Function prototypes
 *******************************************************************************/
 /*Compression / decompression algorithms*/
-uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompressed_size, uint8_t *compressed_text, const uint8_t pointer_length_width);
+uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompressed_size, uint8_t *compressed_text, const uint8_t token_length_width);
 uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_text);
 
 /* File handling functions */

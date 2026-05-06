@@ -54,51 +54,60 @@
  * outputs:
  * - compressed_text is filled with data, uint32_t to represent compressed size
 *******************************************************************************************/
-uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompressed_size, uint8_t *compressed_text, const uint8_t pointer_length_width)
+uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompressed_size, uint8_t *compressed_text, const uint8_t token_length_width)
 {
-    uint16_t pointer_pos, temp_pointer_pos, output_pointer, pointer_length, temp_pointer_length;
-    uint32_t compressed_pointer, output_size, coding_pos, output_lookahead_ref, look_behind, look_ahead;
-    uint16_t pointer_pos_max, pointer_length_max;
-    pointer_pos_max = pow(2, 16 - pointer_length_width);
-    pointer_length_max = pow(2, pointer_length_width);
+    /* variable declarations for algorithm */
+    uint16_t token_ptr, token_copy_pos, temp_token_copy_pos, token_length, temp_token_length;
+    uint32_t data_ptr, output_size, buffer_pos, token_lookahead_ref, look_behind, look_ahead;
 
+    /* consts for the max parameters of a token (based on token_length_width param) */
+    const uint16_t TOKEN_COPY_POS_MAX = pow(2, 16 - token_length_width);
+    const uint16_t TOKEN_LENGTH_MAX = pow(2, token_length_width);
+
+    /* Storing the uncompressed size in the first 4 bytes of the compressed text */
     *((uint32_t *) compressed_text) = uncompressed_size;
-    *(compressed_text + 4) = pointer_length_width;
-    compressed_pointer = output_size = 5;
+
+    /*Storing the token_length_width at the 5th byte of the compressed text */
+    *(compressed_text + 4) = token_length_width;
+
+    /* Start writing compressed data at the 6th byte*/
+    data_ptr = output_size = 5;
     
-    for(coding_pos = 0; coding_pos < uncompressed_size; ++coding_pos)
+    /* Looping through the entire uncompressed text until our buffer pos reaches the end */
+    for(buffer_pos = 0; buffer_pos < uncompressed_size; ++buffer_pos)
     {
-        pointer_pos = 0;
-        pointer_length = 0;
-        for(temp_pointer_pos = 1; (temp_pointer_pos < pointer_pos_max) && (temp_pointer_pos <= coding_pos); ++temp_pointer_pos)
+        token_copy_pos = 0;
+        token_length = 0;
+        
+        for(temp_token_copy_pos = 1; (temp_token_copy_pos < TOKEN_COPY_POS_MAX) && (temp_token_copy_pos <= buffer_pos); ++temp_token_copy_pos)
         {
-            look_behind = coding_pos - temp_pointer_pos;
-            look_ahead = coding_pos;
-            for(temp_pointer_length = 0; uncompressed_text[look_ahead++] == uncompressed_text[look_behind++]; ++temp_pointer_length)
-                if(temp_pointer_length == pointer_length_max)
+            look_behind = buffer_pos - temp_token_copy_pos;
+            look_ahead = buffer_pos;
+            for(temp_token_length = 0; uncompressed_text[look_ahead++] == uncompressed_text[look_behind++]; ++temp_token_length)
+                if(temp_token_length == TOKEN_LENGTH_MAX)
                     break;
-            if(temp_pointer_length > pointer_length)
+            if(temp_token_length > token_length)
             {
-                pointer_pos = temp_pointer_pos;
-                pointer_length = temp_pointer_length;
-                if(pointer_length == pointer_length_max)
+                token_copy_pos = temp_token_copy_pos;
+                token_length = temp_token_length;
+                if(token_length == TOKEN_LENGTH_MAX)
                     break;
             }
         }
-        coding_pos += pointer_length;
-        if((coding_pos == uncompressed_size) && pointer_length)
+        buffer_pos += token_length;
+        if((buffer_pos == uncompressed_size) && token_length)
         {
-            output_pointer = (pointer_length == 1) ? 0 : ((pointer_pos << pointer_length_width) | (pointer_length - 2));
-            output_lookahead_ref = coding_pos - 1;
+            token_ptr = (token_length == 1) ? 0 : ((token_copy_pos << token_length_width) | (token_length - 2));
+            token_lookahead_ref = buffer_pos - 1;
         }
         else
         {
-            output_pointer = (pointer_pos << pointer_length_width) | (pointer_length ? (pointer_length - 1) : 0);
-            output_lookahead_ref = coding_pos;
+            token_ptr = (token_copy_pos << token_length_width) | (token_length ? (token_length - 1) : 0);
+            token_lookahead_ref = buffer_pos;
         }
-        *((uint16_t *) (compressed_text + compressed_pointer)) = output_pointer;
-        compressed_pointer += 2;
-        *(compressed_text + compressed_pointer++) = *(uncompressed_text + output_lookahead_ref);
+        *((uint16_t *) (compressed_text + data_ptr)) = token_ptr;
+        data_ptr += 2;
+        *(compressed_text + data_ptr++) = *(uncompressed_text + token_lookahead_ref);
         output_size += 3;
     }
 
@@ -236,7 +245,7 @@ uint32_t lz77_compress_until_optimised(uint8_t* uncompressed_text, uint32_t unco
     /* iterate over bit sizes until we find the next bitsize increases size instead of decrease - return previous one instead */
     int i = MIN_BITSIZE;
     for(; i < MAX_BITSIZE; ++i){
-        
+        printf("Compressing to bitsize: %d\n", i);
         cur_size = lz77_compress(uncompressed_text,uncompressed_size, compressed_text, i);
 
         /* if new compression is better, set prev to new (kind of a best match) */
