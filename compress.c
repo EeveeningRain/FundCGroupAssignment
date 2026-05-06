@@ -61,8 +61,8 @@ uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompr
     uint32_t data_ptr, output_size, buffer_pos, token_lookahead_ref, look_behind, look_ahead;
 
     /* consts for the max parameters of a token (based on token_length_width param) */
-    const uint16_t TOKEN_COPY_POS_MAX = pow(2, 16 - token_length_width);
-    const uint16_t TOKEN_LENGTH_MAX = pow(2, token_length_width);
+    const uint16_t TOKEN_COPY_POS_MAX = 1U << (16 - token_length_width);
+    const uint16_t TOKEN_LENGTH_MAX = 1U << (token_length_width);
 
     /* Storing the uncompressed size in the first 4 bytes of the compressed text */
     *((uint32_t *) compressed_text) = uncompressed_size;
@@ -105,6 +105,8 @@ uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompr
             token_ptr = (token_copy_pos << token_length_width) | (token_length ? (token_length - 1) : 0);
             token_lookahead_ref = buffer_pos;
         }
+
+        /* once token is built, */
         *((uint16_t *) (compressed_text + data_ptr)) = token_ptr;
         data_ptr += 2;
         *(compressed_text + data_ptr++) = *(uncompressed_text + token_lookahead_ref);
@@ -173,17 +175,9 @@ uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_
         if(token_copy_pos) { 
             copy_offset = buffer_pos - token_copy_pos;
             /* offset is current pos minus token's copy pos; loop until gone through length specified*/
-            uint32_t i = 0;
-           for(; i < token_length; i++){
+            copy_offset = buffer_pos - token_copy_pos;
+            for(; token_length > 0; --token_length){
                 /* add to uncompressed text each byte as we go through */
-                /*if (buffer_pos > uncompressed_size){
-                    printf("Buffer overflowed text! buffer pos: %d, uncompressed size: %d\n", buffer_pos, uncompressed_size);
-                    return 0;
-                }
-                if (token_copy_pos > buffer_pos) {
-                    printf("Invalid offset: %u > %u\n", token_copy_pos, buffer_pos);
-                    return 0;
-                }*/
                 uncompressed_text[buffer_pos++] = uncompressed_text[copy_offset++];
             }
         }
@@ -235,7 +229,7 @@ long fsize (FILE *in)
 uint32_t lz77_compress_until_optimised(uint8_t* uncompressed_text, uint32_t uncompressed_size, uint8_t* compressed_text, const size_t malloc_size){
     /* magic numbers - found via testing */
     const uint32_t MAX_BITSIZE = 16;
-    const uint32_t MIN_BITSIZE = 2;
+    const uint32_t MIN_BITSIZE = 3;
 
     uint8_t* prev_text = malloc(malloc_size);
     uint32_t prev_size = UINT32_MAX;
@@ -243,10 +237,17 @@ uint32_t lz77_compress_until_optimised(uint8_t* uncompressed_text, uint32_t unco
     uint32_t cur_size = 0;
 
     /* iterate over bit sizes until we find the next bitsize increases size instead of decrease - return previous one instead */
-    int i = MIN_BITSIZE;
+    uint32_t i = MIN_BITSIZE;
     for(; i < MAX_BITSIZE; ++i){
         printf("Compressing to bitsize: %d\n", i);
         cur_size = lz77_compress(uncompressed_text,uncompressed_size, compressed_text, i);
+
+        if(cur_size > uncompressed_size){
+            printf("Compression does not improve this file, aborting!\n");
+            memcpy(compressed_text, uncompressed_text, uncompressed_size);
+            free(prev_text);
+            return uncompressed_size;
+        }
 
         /* if new compression is better, set prev to new (kind of a best match) */
         if(cur_size < prev_size){

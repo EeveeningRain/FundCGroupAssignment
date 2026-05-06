@@ -14,7 +14,8 @@
     /* FILE, malloc(), */
 #include <math.h> 
     /* pow() */
-
+#include <string.h>
+    /* memcpy() */
 /*stdint.h is used to simplify types for compression - could use primitives instead */
 #include <stdint.h> 
     /* uint8, uint16, uint32 */
