@@ -79,13 +79,16 @@ uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompr
         token_copy_pos = 0;
         token_length = 0;
         
+        /* core functioning of algorithm; looking backwards for a match */
         for(temp_token_copy_pos = 1; (temp_token_copy_pos < TOKEN_COPY_POS_MAX) && (temp_token_copy_pos <= buffer_pos); ++temp_token_copy_pos)
         {
+            /* we intend to look forward and ahead and compare matching bytes */
             look_behind = buffer_pos - temp_token_copy_pos;
             look_ahead = buffer_pos;
             for(temp_token_length = 0; uncompressed_text[look_ahead++] == uncompressed_text[look_behind++]; ++temp_token_length)
                 if(temp_token_length == TOKEN_LENGTH_MAX)
                     break;
+            /* keep track of our best match so far */
             if(temp_token_length > token_length)
             {
                 token_copy_pos = temp_token_copy_pos;
@@ -94,21 +97,28 @@ uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompr
                     break;
             }
         }
+
+        /* advance pointer over token */
         buffer_pos += token_length;
+        
+        /* dealing with the end of input */
         if((buffer_pos == uncompressed_size) && token_length)
         {
             token_ptr = (token_length == 1) ? 0 : ((token_copy_pos << token_length_width) | (token_length - 2));
             token_lookahead_ref = buffer_pos - 1;
         }
+        /* otherwise, build token of the copy position and the length to copy*/
         else
         {
             token_ptr = (token_copy_pos << token_length_width) | (token_length ? (token_length - 1) : 0);
             token_lookahead_ref = buffer_pos;
         }
 
-        /* once token is built, */
+        /* once token is built, write it in to the compressed text and move data_ptr forward*/
         *((uint16_t *) (compressed_text + data_ptr)) = token_ptr;
         data_ptr += 2;
+
+        /* add the look ahead byte and then update output size */
         *(compressed_text + data_ptr++) = *(uncompressed_text + token_lookahead_ref);
         output_size += 3;
     }
@@ -181,6 +191,7 @@ uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_
                 uncompressed_text[buffer_pos++] = uncompressed_text[copy_offset++];
             }
         }
+        /* append one byte after a back reference */
         uncompressed_text[buffer_pos++] = *(compressed_text + data_ptr++);
     }
     
@@ -191,6 +202,9 @@ uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_
     }
     return buffer_pos; /* should be positioned at EOF - is the same as length */
 }
+
+
+
 
 /****************************************************************************************************
  * Functions relating to the compression / decompression of specific files:
