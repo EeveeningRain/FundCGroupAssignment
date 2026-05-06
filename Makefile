@@ -7,8 +7,8 @@
 
 CC      = gcc
 CFLAGS  = -Wall -Wextra -pedantic -std=c90
-TARGET  = encryption_test_prog
-SRCS    = main.c encryption.c helpers.c
+TARGET  = super_secure_disk.exe
+SRCS    = main.c encryption.c compress.c helpers.c
 OBJS    = $(SRCS:.c=.o)
 
 # ---- Default target (normal build) ----------------------------------------
@@ -25,8 +25,9 @@ debug: CFLAGS += -DDEBUG -g
 debug: $(TARGET)
 
 # ---- Dependency hints (keep rebuilds correct) ------------------------------
-main.o:    main.c    encryption.h helpers.h
+main.o:    main.c    encryption.h compress.h helpers.h
 encryption.o:    encryption.c    encryption.h
+compress.o:		compress.c		compress.h
 helpers.o: helpers.c helpers.h encryption.h
 
 # ---- Clean -----------------------------------------------------------------

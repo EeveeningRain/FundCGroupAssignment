@@ -163,12 +163,12 @@ static const char *basename_only(const char *path)
  *
  * Returns 0 on success, -1 if result would overflow out_buf_len.
  */
-int build_output_name(const char *infile, int encrypt_mode, char *out_buf,
+int build_output_name(const char *infile, int mode, char *out_buf,
                       size_t out_buf_len)
 {
     size_t in_len = strlen(infile);
 
-    if (encrypt_mode)
+    if (mode == 1)
     {
         /* append ".enc" */
         if (in_len + 4 + 1 > out_buf_len)
@@ -176,7 +176,7 @@ int build_output_name(const char *infile, int encrypt_mode, char *out_buf,
         memcpy(out_buf, infile, in_len);
         memcpy(out_buf + in_len, ".enc", 5); /* includes null */
     }
-    else
+    else if (mode == 2)
     {
         /* strip ".enc" if present */
         const char *enc_suffix = ".enc";
@@ -199,6 +199,41 @@ int build_output_name(const char *infile, int encrypt_mode, char *out_buf,
             memcpy(out_buf, infile, in_len);
             memcpy(out_buf + in_len, ".dec", 5);
         }
+    }
+    else if(mode == 3){ /*compress*/
+        if (in_len + 4 + 1 > out_buf_len)
+            return -1;
+        memcpy(out_buf, infile, in_len);
+        memcpy(out_buf + in_len, ".lz77", 6); /* includes null */
+    }
+    else if(mode == 4){ /*uncompress*/
+        /* strip ".lz77" if present */
+        const char *lz77_suffix = ".lz77";
+        size_t lz77_len = 5;
+        if (in_len > lz77_len &&
+            strcmp(infile + in_len - lz77_len, lz77_suffix) == 0)
+        {
+            /* strip the suffix */
+            size_t new_len = in_len - lz77_len;
+            if (new_len + 1 > out_buf_len)
+                return -1;
+            memcpy(out_buf, infile, new_len);
+            out_buf[new_len] = '\0';
+        }
+        else
+        {
+            /* no .enc suffix - append ".dec" to avoid overwriting input */
+            if (in_len + 4 + 1 > out_buf_len)
+                return -1;
+            memcpy(out_buf, infile, in_len);
+            memcpy(out_buf + in_len, ".lz77u", 7);
+        }
+    }
+    else if(mode == 5){ /*compress/encrypt*/
+
+    }
+    else if(mode == 6){ /*decrypt/uncompress*/
+
     }
     return 0;
 }

@@ -116,7 +116,7 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
      *       block  11   : data CBC IV (plaintext)
      *       blocks 12+  : file data          (encrypted)
      * ================================================================== */
-     if (mode == 1) /* Mode: Decrypt */
+     if (mode == 1 || mode == 5) /* Mode: Encrypt */
     {
         size_t total_bytes;
         int data_iv[2];
@@ -189,7 +189,7 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
          *  3. Write exactly original_size bytes to strip zero-padding.
          *  4. Display the recovered metadata.
          * ================================================================== */
-    else if (mode == 2) /* Mode == Encrypt */
+    else if (mode == 2 || mode == 6) /* Mode == Decrypt */
     {
         int decode_result;
         int data_iv[2];
