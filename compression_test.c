@@ -19,11 +19,7 @@ int main(int argc, char *argv[]){
     char* input = malloc(20 * sizeof(char));
     printf("please enter filename to compress: ");
     scanf("%s", input);
-    int bitsize = 1;
-    printf("please enter bit size: ");
-    scanf("%d", &bitsize);
-
-    compress_file(fopen(input, "r"), input, bitsize);
+    compress_file(fopen(input, "r"), input);
 
     printf("please enter compressed file to uncompress: ");
     scanf("%s", input);
@@ -32,7 +28,7 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-int compress_file(FILE* file, char* filename, int bitsize){
+int compress_file(FILE* file, char* filename){
     if(file == NULL)
         return 0;
     printf("Original size: %ld\n", fsize(file));
@@ -44,9 +40,8 @@ int compress_file(FILE* file, char* filename, int bitsize){
     strcpy(filename_out, filename);
     strcat(filename_out, ".lz77\0");
 
-    uint8_t i = 1;
-    for(; i < bitsize; ++i)
-        printf("Compressed (%i): %u\n", i, file_lz77_compress(filename, filename_out, 100000000, i));
+
+    printf("Compressed size: %u\n", file_lz77_compress(filename, filename_out, 100000000));
 
     free(filename_out);
     return 0;
@@ -59,6 +54,9 @@ int decompress_file(FILE* file, char* filename){
     fclose(file);
 
     char* filename_out = malloc(50 * sizeof(char));
+    strcpy(filename_out, filename);
+    filename_out[strlen(filename) - 5] = '\0'; /* remove .lz77 */
+
     printf("Decompressed: (%u)\n", file_lz77_decompress(filename, filename_out));
 
     free(filename_out);
