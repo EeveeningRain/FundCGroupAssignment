@@ -34,7 +34,7 @@ long fsize (FILE *in); /* Helper function */
 uint32_t lz77_compress_until_optimised(uint8_t* uncompressed_text, uint32_t uncompressed_size, uint8_t* compressed_text, const size_t malloc_size); /* Helper function */
 uint32_t file_lz77_compress (const char *filename_in, const char *filename_out, const size_t malloc_size);
 uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out);
-int do_compression(const int mode, const char *infile, const char *outfile);
+uint32_t do_compression(const int mode, const char *infile, const char *outfile);
 
 
 #endif

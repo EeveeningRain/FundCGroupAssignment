@@ -31,7 +31,11 @@
 *****************************************************************************************************/
 
 /****************************************************************************************************
- * Main algorithms for lz77 compression / decompression
+ * Main algorithms for lz77 compression / decompression adapted from Andy Herbert's "LZ1" C Lempel-Ziv
+ * 77 implementation (see documentation for details). This version takes the original and improves upon 
+ * it by cleaning up redundant sections, improving code readability, and replacing unsafe bitmath ops. 
+ * There is also a new optimiser function below which uses existing functions and finds the best match 
+ * size for optimal compression of files to use in the broader program.
  * 
  * lz77_compress takes in a text (uint8_t*) and it's size, and then outputs a string which represents
  * the compressed text. Ptr length width controls how large a match can be.
@@ -178,7 +182,7 @@ uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_
 
         if (token_copy_pos > buffer_pos) {
             printf("Invalid backreference: %u > %u\n", token_copy_pos, buffer_pos);
-            return 0;
+            return 1;
         }
 
         /* this is where we now replace the token with data */
@@ -216,6 +220,8 @@ uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_
  * 
  * file_lz77_decompress takes in a file (compressed), outputs a file which is decompressed
  * 
+ * do_compression is the hook for main to integrate in with methods in this file
+ * 
  ****************************************************************************************************/
 
 /******************************************************************************************
@@ -243,7 +249,7 @@ long fsize (FILE *in)
 uint32_t lz77_compress_until_optimised(uint8_t* uncompressed_text, uint32_t uncompressed_size, uint8_t* compressed_text, const size_t malloc_size){
     /* magic numbers - found via testing */
     const uint32_t MAX_BITSIZE = 16;
-    const uint32_t MIN_BITSIZE = 3;
+    const uint32_t MIN_BITSIZE = 4;
 
     uint8_t* prev_text = malloc(malloc_size);
     uint32_t prev_size = UINT32_MAX;
@@ -304,7 +310,7 @@ uint32_t file_lz77_compress (const char *filename_in, const char *filename_out, 
     /* try to open the file, if it fails, immediately return 0 */
     in = fopen(filename_in, "rb");
     if(in == NULL)
-        return 0;
+        return 1;
     
     /*use this file to verify uncompressed size, malloc for the uncompressed text that is going to be read in */
     uncompressed_size = fsize(in);
@@ -312,7 +318,7 @@ uint32_t file_lz77_compress (const char *filename_in, const char *filename_out, 
 
     /* try to read in entire file, if fails then return 0*/
     if((uncompressed_size != fread(uncompressed_text, 1, uncompressed_size, in)))
-        return 0;
+        return 1;
 
     /* close file */
     fclose(in);
@@ -325,9 +331,9 @@ uint32_t file_lz77_compress (const char *filename_in, const char *filename_out, 
     /* once compressed, write out to file, if opening or writing fails return 0 */
     out = fopen(filename_out, "wb");
     if(out == NULL)
-        return 0;
+        return 1;
     if((compressed_size != fwrite(compressed_text, 1, compressed_size, out)))
-        return 0;
+        return 1;
     fclose(out);
 
     /* on success return the new size of the compressed file */
@@ -352,16 +358,20 @@ uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out
 
     /* try to open the compressed file, if fail return 0 */
     in = fopen(filename_in, "rb");
-    if(in == NULL)
-        return 0;
+    if(in == NULL){
+        printf("File opening failed! Does the file exist? filename_in: %s", filename_in);
+        return 1;
+    }
 
     /* grab size of this file, malloc enough space to read in */
     compressed_size = fsize(in);
     compressed_text = malloc(compressed_size);
 
     /* if read fails, return 0 */
-    if(fread(compressed_text, 1, compressed_size, in) != compressed_size)
-        return 0;
+    if(fread(compressed_text, 1, compressed_size, in) != compressed_size){
+        printf("File reading failed, does not equal expected size!");
+        return 1;
+    }
     fclose(in);
 
     /* compression has stored the compressed size in the first 4 bytes of the compressed text, read these in */
@@ -372,18 +382,18 @@ uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out
     /* try to decompress, if it fails then return 0 */
     if(lz77_decompress(compressed_text, uncompressed_text) != uncompressed_size){
         printf("Decompression failed! Uncompressed size (%d) did not equal returned size!\n", uncompressed_size);
-        return 0;
+        return 1;
     }
     /*printf("Compression seemed to succeed!\n");*/
     /* then write to file checking for failing to open or write*/
     out = fopen(filename_out, "wb");
     if(out == NULL){
         printf("Filename invalid! filename_out: %s\n", filename_out);
-        return 0;
+        return 1;
     }
     if(fwrite(uncompressed_text, 1, uncompressed_size, out) != uncompressed_size){
-        printf("Written text unequal to uncompressed size!\n");
-        return 0;
+        printf("Written text unequal to uncompressed size! Decompression must have failed.\n");
+        return 1;
     }
     fclose(out);
 
@@ -392,13 +402,23 @@ uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out
     return uncompressed_size;
 }
 
-int do_compression(const int mode, const char *infile, const char *outfile){
-
+/******************************************************************************************
+ * This function takes in a mode (compress/decompress), infile, and outfile, and hooks in
+ * with the other functions in this file to do compression for the main file.
+ * 
+ * inputs:
+ * - const int mode, const char* infile, const char* outfile (in/outfile is filename)
+ * outputs:
+ * - int success (0), failure (1)
+*******************************************************************************************/
+uint32_t do_compression(const int mode, const char *infile, const char *outfile){
+    /* store success or failure to return later */
+    int result = 0;
     if(mode == 3 || mode == 5){ /* compress or compress & encrypt */
-        file_lz77_compress(infile, outfile, MALLOC_SIZE);
+        result = file_lz77_compress(infile, outfile, MALLOC_SIZE);
     }
     else if(mode == 4 || mode == 6){
-        file_lz77_decompress(infile, outfile);
+        result = file_lz77_decompress(infile, outfile);
     }
-    return 0;
+    return result;
 }
