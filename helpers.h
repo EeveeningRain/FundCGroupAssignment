@@ -36,7 +36,7 @@
  * FILE METADATA  —  populated by header_encode, decoded by header_decode
  * ========================================================================= */
 
-typedef struct
+typedef struct FileHeader
 {
     size_t original_size;              /* exact byte count of plaintext*/
     char filename[HEADER_FNAME_BYTES]; /* original filename, null-term*/

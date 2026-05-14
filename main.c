@@ -52,6 +52,7 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
 #define MODE_COMPRESS_AND_ENCRYPT   5
 #define MODE_DECRYPT_AND_UNCOMPRESS 6
 
+
 /* Buffer size for auto-derived output filenames */
 #define OUTFILE_BUF 4096
 
@@ -278,7 +279,7 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
         char *outfile_buf = malloc(OUTFILE_BUF);
         if (!outfile_buf) return -1;
 
-        if (build_output_name(*infile, (*mode == MODE_ENCRYPT), outfile_buf,
+        if (build_output_name(*infile, *mode, outfile_buf,
                               OUTFILE_BUF) != 0)
         {
             fprintf(stderr, "ERROR: input filename too long to derive "

@@ -168,73 +168,83 @@ int build_output_name(const char *infile, int mode, char *out_buf,
 {
     size_t in_len = strlen(infile);
 
-    if (mode == 1)
+    switch (mode)
     {
-        /* append ".enc" */
-        if (in_len + 4 + 1 > out_buf_len)
+        case 0:
+            printf("Mode is 0 (none)! This should not happen if parse_args is correct.\n");
             return -1;
-        memcpy(out_buf, infile, in_len);
-        memcpy(out_buf + in_len, ".enc", 5); /* includes null */
-    }
-    else if (mode == 2)
-    {
-        /* strip ".enc" if present */
-        const char *enc_suffix = ".enc";
-        size_t enc_len = 4;
-        if (in_len > enc_len &&
-            strcmp(infile + in_len - enc_len, enc_suffix) == 0)
-        {
-            /* strip the suffix */
-            size_t new_len = in_len - enc_len;
-            if (new_len + 1 > out_buf_len)
-                return -1;
-            memcpy(out_buf, infile, new_len);
-            out_buf[new_len] = '\0';
-        }
-        else
-        {
-            /* no .enc suffix - append ".dec" to avoid overwriting input */
+
+        case 5:
+            /* compress/encrypt, carry out next two options */
+
+        case 3:
+            if (in_len + 4 + 1 > out_buf_len)
+            return -1;
+            memcpy(out_buf, infile, in_len);
+            memcpy(out_buf + in_len, ".lz77", 6); /* includes null */
+            if (mode != 5) break; /* if just compress, we are done */
+
+        case 1:
+            /* append ".enc" */
             if (in_len + 4 + 1 > out_buf_len)
                 return -1;
             memcpy(out_buf, infile, in_len);
-            memcpy(out_buf + in_len, ".dec", 5);
-        }
-    }
-    else if(mode == 3){ /*compress*/
-        if (in_len + 4 + 1 > out_buf_len)
-            return -1;
-        memcpy(out_buf, infile, in_len);
-        memcpy(out_buf + in_len, ".lz77", 6); /* includes null */
-    }
-    else if(mode == 4){ /*uncompress*/
-        /* strip ".lz77" if present */
-        const char *lz77_suffix = ".lz77";
-        size_t lz77_len = 5;
-        if (in_len > lz77_len &&
-            strcmp(infile + in_len - lz77_len, lz77_suffix) == 0)
-        {
-            /* strip the suffix */
-            size_t new_len = in_len - lz77_len;
-            if (new_len + 1 > out_buf_len)
-                return -1;
-            memcpy(out_buf, infile, new_len);
-            out_buf[new_len] = '\0';
-        }
-        else
-        {
-            /* no .enc suffix - append ".dec" to avoid overwriting input */
-            if (in_len + 4 + 1 > out_buf_len)
-                return -1;
-            memcpy(out_buf, infile, in_len);
-            memcpy(out_buf + in_len, ".lz77u", 7);
-        }
-    }
-    else if(mode == 5){ /*compress/encrypt*/
+            memcpy(out_buf + in_len, ".enc", 5); /* includes null */
+            break;
+
+        case 6:
+            /* decrypt/uncompress, carry out next two options */
+
+        case 4:
+            /* strip ".lz77" if present */
+            const char *lz77_suffix = ".lz77";
+            size_t lz77_len = 5;
+            if (in_len > lz77_len &&
+                strcmp(infile + in_len - lz77_len, lz77_suffix) == 0)
+            {
+                /* strip the suffix */
+                size_t new_len = in_len - lz77_len;
+                if (new_len + 1 > out_buf_len)
+                    return -1;
+                memcpy(out_buf, infile, new_len);
+                out_buf[new_len] = '\0';
+            }
+            else
+            {
+                /* no .enc suffix - append ".dec" to avoid overwriting input */
+                if (in_len + 4 + 1 > out_buf_len)
+                    return -1;
+                memcpy(out_buf, infile, in_len);
+                memcpy(out_buf + in_len, ".lz77u", 7);
+            }
+
+            if (mode != 6) break; /* if just uncompress, we are done */
+
+        case 2:
+            /* strip ".enc" if present */
+            const char *enc_suffix = ".enc";
+            size_t enc_len = 4;
+            if (in_len > enc_len &&
+                strcmp(infile + in_len - enc_len, enc_suffix) == 0)
+            {
+                /* strip the suffix */
+                size_t new_len = in_len - enc_len;
+                if (new_len + 1 > out_buf_len)
+                    return -1;
+                memcpy(out_buf, infile, new_len);
+                out_buf[new_len] = '\0';
+            }
+            else
+            {
+                /* no .enc suffix - append ".dec" to avoid overwriting input */
+                if (in_len + 4 + 1 > out_buf_len)
+                    return -1;
+                memcpy(out_buf, infile, in_len);
+                memcpy(out_buf + in_len, ".dec", 5);
+            }
 
     }
-    else if(mode == 6){ /*decrypt/uncompress*/
 
-    }
     return 0;
 }
 
@@ -295,10 +305,10 @@ void extract_name(const char *path, char *out, size_t out_size)
  * CBC (CIPHER BLOCK CHAINING) HELPERS
  * ========================================================================= */
 
-static void xor_block(int byte_block[2], const int iv[2])
+static void xor_block(int byte_block[2], const int prev_block[2])
 {
-    byte_block[0] ^= iv[0];
-    byte_block[1] ^= iv[1];
+    byte_block[0] ^= prev_block[0];
+    byte_block[1] ^= prev_block[1];
 }
 
 static void copy_block(int dst[2], const int src[2])
@@ -325,6 +335,17 @@ int pop_block(BlockNode **head, int cipher_block[2])
     cipher_block[0] = node->byte_block[0];
     cipher_block[1] = node->byte_block[1];
     free(node);
+    return 0;
+}
+
+int read_block(BlockNode **node, int cipher_block[2])
+{
+
+    if (*node == NULL)
+        return -1;
+
+    cipher_block[0] = (*node)->byte_block[0];
+    cipher_block[1] = (*node)->byte_block[1];
     return 0;
 }
 
@@ -800,7 +821,7 @@ int header_decode(BlockNode **head, FileHeader *hdr, unsigned int rounds,
         unpack_block(plain_block, buf);
         memcpy(hdr->filename + i * BLOCK_BYTES, buf, BLOCK_BYTES);
     }
-    /* guarantee null termination even if stored name filled all 64 bytes */
+    /* guarantee null termination even if stored name filled all available bytes */
     hdr->filename[HEADER_FNAME_BYTES - 1] = '\0';
 
 #ifdef DEBUG
@@ -808,6 +829,79 @@ int header_decode(BlockNode **head, FileHeader *hdr, unsigned int rounds,
     debug_print_header(hdr);
 #endif
 
+    return 0;
+}
+
+int header_query(BlockNode **head, FileHeader *hdr, unsigned int rounds,
+                  int const key[KEY_WORDS]) 
+{
+    unsigned char buf[BLOCK_BYTES];
+    int i;
+    int iv[2];
+    int prev_cipher[2];
+    int cipher_block[2];
+    int plain_block[2];
+    BlockNode *current_block = *head;
+
+    /* ---- Block 0: IV (plaintext) -------------------------------------- */
+    if (read_block(&current_block, iv) != 0)
+        return -2;
+    copy_block(prev_cipher, iv);
+    current_block = current_block->next_byte_block;
+
+    /* ---- Block 1: magic ----------------------------------------------- */
+    if (read_block(&current_block, cipher_block) != 0)
+        return -2;
+    copy_block(plain_block, cipher_block);
+    decipher(rounds, plain_block, key);
+    xor_block(plain_block, iv);
+    copy_block(prev_cipher, cipher_block);
+    unpack_block(plain_block, buf);
+    current_block = current_block->next_byte_block;
+
+    if (memcmp(buf, HEADER_MAGIC, BLOCK_BYTES) != 0)
+    {
+        fprintf(stderr, "ERROR: header magic mismatch - "
+                        "wrong passphrase or not an XTEA-encrypted file\n");
+        return -1;
+    }
+
+    /* ---- Block 2: original size --------------------------------------- */
+    if (read_block(&current_block, cipher_block) != 0)
+        return -2;
+    copy_block(plain_block, cipher_block);
+    decipher(rounds, plain_block, key);
+    xor_block(plain_block, prev_cipher);
+    copy_block(prev_cipher, cipher_block);
+    unpack_block(plain_block, buf);
+    current_block = current_block->next_byte_block;
+    {
+        size_t decoded_size = 0;
+        int byte_idx;
+        for (byte_idx = 0; byte_idx < 8; byte_idx++)
+        {
+            decoded_size = (decoded_size << 8) | (unsigned long)buf[byte_idx];
+        }
+        hdr->original_size = decoded_size;
+    }
+
+    /* ---- Blocks 3-10: filename ---------------------------------------- */
+    memset(hdr->filename, 0, HEADER_FNAME_BYTES);
+    for (i = 0; i < HEADER_FNAME_BLOCKS; i++)
+    {
+        if (read_block(&current_block, cipher_block) != 0)
+            return -2;
+        copy_block(plain_block, cipher_block);
+        decipher(rounds, plain_block, key);
+        xor_block(plain_block, prev_cipher);
+        copy_block(prev_cipher, cipher_block);
+        unpack_block(plain_block, buf);
+        memcpy(hdr->filename + i * BLOCK_BYTES, buf, BLOCK_BYTES);
+        current_block = current_block->next_byte_block;
+    }
+    /* guarantee null termination even if stored name filled all available bytes */
+    hdr->filename[HEADER_FNAME_BYTES - 1] = '\0';
+    
     return 0;
 }
 
