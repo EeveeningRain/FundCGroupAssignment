@@ -30,8 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "encryption.h"
 #include "compress.h"
+#include "encryption.h"
 #include "helpers.h"
 
 /* -------------------------------------------------------------------------
@@ -44,14 +44,13 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
 /* -------------------------------------------------------------------------
  * Preprocessor definitions
  * ---------------------------------------------------------------------- */
-#define MODE_NONE       0
-#define MODE_ENCRYPT    1
-#define MODE_DECRYPT    2
-#define MODE_COMPRESS   3
-#define MODE_UNCOMPRESS 4
+#define MODE_NONE                   0
+#define MODE_ENCRYPT                1
+#define MODE_DECRYPT                2
+#define MODE_COMPRESS               3
+#define MODE_UNCOMPRESS             4
 #define MODE_COMPRESS_AND_ENCRYPT   5
 #define MODE_DECRYPT_AND_UNCOMPRESS 6
-
 
 /* Buffer size for auto-derived output filenames */
 #define OUTFILE_BUF 4096
@@ -84,17 +83,20 @@ int main(int argc, char *argv[])
         do_encryption(mode, infile, outfile, passphrase, rounds);
     }
 
-    if(mode == MODE_COMPRESS || mode == MODE_UNCOMPRESS){
+    if (mode == MODE_COMPRESS || mode == MODE_UNCOMPRESS)
+    {
         do_compression(mode, infile, outfile);
     }
 
-    if(mode == MODE_COMPRESS_AND_ENCRYPT){
+    if (mode == MODE_COMPRESS_AND_ENCRYPT)
+    {
         do_compression(mode, infile, tempfile);
         do_encryption(mode, tempfile, outfile, passphrase, rounds);
         remove(tempfile);
     }
 
-    if(mode == MODE_DECRYPT_AND_UNCOMPRESS){
+    if (mode == MODE_DECRYPT_AND_UNCOMPRESS)
+    {
         do_encryption(mode, infile, tempfile, passphrase, rounds);
         do_compression(mode, tempfile, outfile);
         remove(tempfile);
@@ -115,7 +117,8 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
     int i;
     for (i = 1; i < argc; i++)
     {
-        if(strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compress") == 0){
+        if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compress") == 0)
+        {
             if (*mode == MODE_UNCOMPRESS)
             {
                 fprintf(stderr, "ERROR: cannot specify both -c and -u\n");
@@ -123,7 +126,9 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
             }
             *mode = MODE_COMPRESS;
         }
-        else if(strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--uncompress") == 0){
+        else if (strcmp(argv[i], "-u") == 0 ||
+                 strcmp(argv[i], "--uncompress") == 0)
+        {
             if (*mode == MODE_COMPRESS)
             {
                 fprintf(stderr, "ERROR: cannot specify both -c and -u\n");
@@ -131,7 +136,8 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
             }
             *mode = MODE_UNCOMPRESS;
         }
-        else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0)
+        else if (strcmp(argv[i], "-e") == 0 ||
+                 strcmp(argv[i], "--encrypt") == 0)
         {
             if (*mode == MODE_DECRYPT)
             {
@@ -140,7 +146,8 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
             }
             *mode = MODE_ENCRYPT;
         }
-        else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--decrypt") == 0)
+        else if (strcmp(argv[i], "-d") == 0 ||
+                 strcmp(argv[i], "--decrypt") == 0)
         {
             if (*mode == MODE_ENCRYPT)
             {
@@ -149,15 +156,23 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
             }
             *mode = MODE_DECRYPT;
         }
-        else if(strcmp(argv[i], "-z") == 0 || strcmp(argv[i], "--compressandencrypt") == 0){
-            if (*mode != MODE_NONE){
-                fprintf(stderr, "ERROR: cannot specify -z with other mode flags!\n");
+        else if (strcmp(argv[i], "-z") == 0 ||
+                 strcmp(argv[i], "--compressandencrypt") == 0)
+        {
+            if (*mode != MODE_NONE)
+            {
+                fprintf(stderr,
+                        "ERROR: cannot specify -z with other mode flags!\n");
             }
             *mode = MODE_COMPRESS_AND_ENCRYPT;
         }
-        else if(strcmp(argv[i], "-x") == 0 || strcmp(argv[i], "--decryptanduncompress") == 0){
-            if (*mode != MODE_NONE){
-                fprintf(stderr, "ERROR: cannot specify -x with other mode flags!\n");
+        else if (strcmp(argv[i], "-x") == 0 ||
+                 strcmp(argv[i], "--decryptanduncompress") == 0)
+        {
+            if (*mode != MODE_NONE)
+            {
+                fprintf(stderr,
+                        "ERROR: cannot specify -x with other mode flags!\n");
             }
             *mode = MODE_DECRYPT_AND_UNCOMPRESS;
         }
@@ -175,9 +190,11 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
 
             if (argv[i][0] == '-')
             {
-                fprintf(stderr, "WARNING: unexpected argument tag'%s'\n"
-                                "         Are you sure you entered the file "
-                                "name?\n", argv[i]);
+                fprintf(stderr,
+                        "WARNING: unexpected argument tag'%s'\n"
+                        "         Are you sure you entered the file "
+                        "name?\n",
+                        argv[i]);
             }
             *infile = argv[i];
         }
@@ -191,25 +208,31 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
 
             if (argv[i][0] == '-')
             {
-                fprintf(stderr, "WARNING: unexpected argument tag'%s'\n"
-                                "         Are you sure you entered the file "
-                                "name?\n", argv[i]);
+                fprintf(stderr,
+                        "WARNING: unexpected argument tag'%s'\n"
+                        "         Are you sure you entered the file "
+                        "name?\n",
+                        argv[i]);
             }
             *outfile = argv[i];
         }
-        else if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--passphrase") == 0)
+        else if (strcmp(argv[i], "-p") == 0 ||
+                 strcmp(argv[i], "--passphrase") == 0)
         {
             if (++i >= argc)
             {
-                fprintf(stderr, "ERROR: -p requires a passphrase to be entered\n");
+                fprintf(stderr,
+                        "ERROR: -p requires a passphrase to be entered\n");
                 return -1;
             }
 
             if (argv[i][0] == '-')
             {
-                fprintf(stderr, "WARNING: unexpected argument '%s'\n"
-                                "         Are you sure you entered the "
-                                "password?\n", argv[i]);
+                fprintf(stderr,
+                        "WARNING: unexpected argument '%s'\n"
+                        "         Are you sure you entered the "
+                        "password?\n",
+                        argv[i]);
             }
             *passphrase = argv[i];
         }
@@ -267,7 +290,8 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
     /* Passphrase not defined when trying to use cipher */
     if ((*mode == MODE_ENCRYPT || *mode == MODE_DECRYPT) && *passphrase == NULL)
     {
-        fprintf(stderr, "ERROR:  -p flag (passphrase) is required when using encrypt or decrypt\n");
+        fprintf(stderr, "ERROR:  -p flag (passphrase) is required when using "
+                        "encrypt or decrypt\n");
         print_usage(argv[0]);
         return -1;
     }
@@ -277,10 +301,10 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
     {
         /* Auto-derived output name lives here when -o is omitted */
         char *outfile_buf = malloc(OUTFILE_BUF);
-        if (!outfile_buf) return -1;
+        if (!outfile_buf)
+            return -1;
 
-        if (build_output_name(*infile, *mode, outfile_buf,
-                              OUTFILE_BUF) != 0)
+        if (build_output_name(*infile, *mode, outfile_buf, OUTFILE_BUF) != 0)
         {
             fprintf(stderr, "ERROR: input filename too long to derive "
                             "output name -- please supply -o\n");
@@ -326,17 +350,22 @@ static void print_usage(const char *full_path)
     printf("  -d,            --decrypt                Decrypt\n");
     printf("  -z,            --compressandencrypt     Compress & Encrypt\n");
     printf("  -x             --decryptanduncompress   Decrypt & Uncompress\n");
-    printf("  -i <file>,     --input <file>           Input file (any binary type)\n");
-    printf("  -o <file>,     --output <file>          Output file (optional -- auto-derived if omitted)\n");
-    printf("  -p <phrase>,   --passphrase <phrase>    Passphrase  (use quotes for spaces)\n");
-    printf("  -r <num>,      --rounds <num>           XTEA rounds (default 32; must match on decrypt)\n");
+    printf("  -i <file>,     --input <file>           Input file (any binary "
+           "type)\n");
+    printf("  -o <file>,     --output <file>          Output file (optional -- "
+           "auto-derived if omitted)\n");
+    printf("  -p <phrase>,   --passphrase <phrase>    Passphrase  (use quotes "
+           "for spaces)\n");
+    printf("  -r <num>,      --rounds <num>           XTEA rounds (default 32; "
+           "must match on decrypt)\n");
     printf("  -h,            --help                   Show this help\n");
-    printf("\nAuto-naming (when -o is omitted):\n"); 
+    printf("\nAuto-naming (when -o is omitted):\n");
     printf("  Compress:      text.txt       ->  text.txt.lz77\n");
     printf("  Uncompress:    text.txt.lz77  ->  text.txt\n");
     printf("  Encrypt:       photo.jpg      ->  photo.jpg.enc\n");
     printf("  Decrypt:       photo.jpg.enc  ->  photo.jpg\n");
-    printf("  Decrypt:       photo.jpg      ->  photo.jpg.dec  (no .enc to strip)\n\n");
+    printf("  Decrypt:       photo.jpg      ->  photo.jpg.dec  (no .enc to "
+           "strip)\n\n");
     printf("  Compress & Encrypt:   text.txt          -> text.txt.lz77.enc\n");
     printf("  Decrypt & Uncompress: text.txt.lz77.enc -> text.txt\n");
 }

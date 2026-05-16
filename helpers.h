@@ -52,8 +52,8 @@ typedef struct FileHeader
 
 typedef struct BlockNode
 {
-    int byte_block[2];      /* one 64-bit XTEA block (byte_block[0] (left), 
-                             * byte_block[1]) (right) */
+    int byte_block[2]; /* one 64-bit XTEA block (byte_block[0] (left),
+                        * byte_block[1]) (right) */
     struct BlockNode *next_byte_block; /* pointer to next block in chain     */
 } BlockNode;
 
@@ -62,7 +62,8 @@ typedef struct BlockNode
  * ========================================================================= */
 
 /* Allocate and append a new node; returns pointer to it, NULL on failure */
-BlockNode *list_append(BlockNode **head, BlockNode **tail, int byte_block_lower, int byte_block_upper);
+BlockNode *list_append(BlockNode **head, BlockNode **tail, int byte_block_lower,
+                       int byte_block_upper);
 
 /* Free every node in the list */
 void list_free(BlockNode *head);
@@ -185,7 +186,7 @@ int files_are_same(const char *a, const char *b);
 /*
  * extract_name
  * -------------
- * Extracts the filename from a full path, excluding the directory and 
+ * Extracts the filename from a full path, excluding the directory and
  * extension.
  */
 void extract_name(const char *path, char *out, size_t out_size);

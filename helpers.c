@@ -171,7 +171,8 @@ int build_output_name(const char *infile, int mode, char *out_buf,
     switch (mode)
     {
         case 0:
-            printf("Mode is 0 (none)! This should not happen if parse_args is correct.\n");
+            printf("Mode is 0 (none)! This should not happen if parse_args is "
+                   "correct.\n");
             return -1;
 
         case 5:
@@ -179,10 +180,11 @@ int build_output_name(const char *infile, int mode, char *out_buf,
 
         case 3:
             if (in_len + 4 + 1 > out_buf_len)
-            return -1;
+                return -1;
             memcpy(out_buf, infile, in_len);
             memcpy(out_buf + in_len, ".lz77", 6); /* includes null */
-            if (mode != 5) break; /* if just compress, we are done */
+            if (mode != 5)
+                break; /* if just compress, we are done */
 
         case 1:
             /* append ".enc" */
@@ -218,7 +220,8 @@ int build_output_name(const char *infile, int mode, char *out_buf,
                 memcpy(out_buf + in_len, ".lz77u", 7);
             }
 
-            if (mode != 6) break; /* if just uncompress, we are done */
+            if (mode != 6)
+                break; /* if just uncompress, we are done */
 
         case 2:
             /* strip ".enc" if present */
@@ -242,7 +245,6 @@ int build_output_name(const char *infile, int mode, char *out_buf,
                 memcpy(out_buf, infile, in_len);
                 memcpy(out_buf + in_len, ".dec", 5);
             }
-
     }
 
     return 0;
@@ -821,7 +823,8 @@ int header_decode(BlockNode **head, FileHeader *hdr, unsigned int rounds,
         unpack_block(plain_block, buf);
         memcpy(hdr->filename + i * BLOCK_BYTES, buf, BLOCK_BYTES);
     }
-    /* guarantee null termination even if stored name filled all available bytes */
+    /* guarantee null termination even if stored name filled all available bytes
+     */
     hdr->filename[HEADER_FNAME_BYTES - 1] = '\0';
 
 #ifdef DEBUG
@@ -833,7 +836,7 @@ int header_decode(BlockNode **head, FileHeader *hdr, unsigned int rounds,
 }
 
 int header_query(BlockNode **head, FileHeader *hdr, unsigned int rounds,
-                  int const key[KEY_WORDS]) 
+                 int const key[KEY_WORDS])
 {
     unsigned char buf[BLOCK_BYTES];
     int i;
@@ -899,9 +902,10 @@ int header_query(BlockNode **head, FileHeader *hdr, unsigned int rounds,
         memcpy(hdr->filename + i * BLOCK_BYTES, buf, BLOCK_BYTES);
         current_block = current_block->next_byte_block;
     }
-    /* guarantee null termination even if stored name filled all available bytes */
+    /* guarantee null termination even if stored name filled all available bytes
+     */
     hdr->filename[HEADER_FNAME_BYTES - 1] = '\0';
-    
+
     return 0;
 }
 

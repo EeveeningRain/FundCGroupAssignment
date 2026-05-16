@@ -1,9 +1,9 @@
 #include "encryption.h"
 #include "helpers.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 /* preprocessor definitions */
 #define DELTA 0x9E3779B9
@@ -26,8 +26,8 @@ void encipher(unsigned int iteration_count, int byte_block[2],
               int const secret_key[4])
 {
     unsigned int i;
-    int byte_block_lower = byte_block[0],
-        byte_block_upper = byte_block[1], sum = 0, delta = DELTA;
+    int byte_block_lower = byte_block[0], byte_block_upper = byte_block[1],
+        sum = 0, delta = DELTA;
     for (i = 0; i < iteration_count; i++)
     {
         byte_block_lower +=
@@ -48,9 +48,8 @@ void decipher(unsigned int iteration_count, int byte_block[2],
               int const secret_key[4])
 {
     unsigned int i;
-    int byte_block_lower = byte_block[0],
-        byte_block_upper = byte_block[1], delta = DELTA,
-        sum = delta * iteration_count;
+    int byte_block_lower = byte_block[0], byte_block_upper = byte_block[1],
+        delta = DELTA, sum = delta * iteration_count;
     for (i = 0; i < iteration_count; i++)
     {
         byte_block_upper -=
@@ -67,9 +66,9 @@ void decipher(unsigned int iteration_count, int byte_block[2],
     byte_block[1] = byte_block_upper;
 }
 
-
-int do_encryption(const int mode, const char *infile, const char *outfile, 
-                  const char *passphrase, const unsigned int rounds) {
+int do_encryption(const int mode, const char *infile, const char *outfile,
+                  const char *passphrase, const unsigned int rounds)
+{
 
     int key[KEY_WORDS];
     size_t original_size = 0;
@@ -78,27 +77,27 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
 
     /* ---- Read input file into linked list ------------------------------ */
     list = file_to_list(infile, &original_size);
-    
+
     if (list == NULL)
     {
         fprintf(stderr, "ERROR: could not read '%s'\n", infile);
         return 1;
     }
 
-    #ifdef DEBUG
-        fprintf(stderr, "[DEBUG] Input list (%lu blocks):\n", 
+#ifdef DEBUG
+    fprintf(stderr, "[DEBUG] Input list (%lu blocks):\n",
             (unsigned long)list_length(list));
-        debug_print_list(list);
-    #endif
+    debug_print_list(list);
+#endif
 
     /* ---- Derive key from passphrase ------------------------------------ */
     key_from_passphrase(passphrase, key);
 
-    #ifdef DEBUG
-        fprintf(stderr, "[DEBUG] Mode: %s  Rounds: %u\n",
-                (mode == MODE_ENCRYPT) ? "ENCRYPT" : "DECRYPT", rounds);
-        debug_print_key(key);
-    #endif
+#ifdef DEBUG
+    fprintf(stderr, "[DEBUG] Mode: %s  Rounds: %u\n",
+            (mode == MODE_ENCRYPT) ? "ENCRYPT" : "DECRYPT", rounds);
+    debug_print_key(key);
+#endif
 
     /* ==================================================================
      * ENCRYPT PATH
@@ -106,8 +105,8 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
      *  1. Generate data IV and encipher all data blocks in-place.
      *  2. Prepend data IV block.
      *  3. Build a FileHeader with original size and filename.
-     *  4. header_encode() prepends a random header IV block and 10 CBC-encrypted
-     *     metadata blocks. Final on-disk layout:
+     *  4. header_encode() prepends a random header IV block and 10
+     * CBC-encrypted metadata blocks. Final on-disk layout:
      *
      *       block  0    : header CBC IV (plaintext)
      *       block  1    : "XTEAFILE" magic  (encrypted)
@@ -116,7 +115,7 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
      *       block  11   : data CBC IV (plaintext)
      *       blocks 12+  : file data          (encrypted)
      * ================================================================== */
-     if (mode == 1 || mode == 5) /* Mode: Encrypt */
+    if (mode == 1 || mode == 5) /* Mode: Encrypt */
     {
         size_t total_bytes;
         int data_iv[2];
@@ -134,7 +133,8 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
 
         /* Prepend data IV block */
         data_iv_node = (BlockNode *)malloc(sizeof(BlockNode));
-        if (data_iv_node == NULL) {
+        if (data_iv_node == NULL)
+        {
             fprintf(stderr, "ERROR: malloc failed for data IV\n");
             list_free(list);
             return 1;
@@ -177,18 +177,18 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
                (unsigned long)original_size, outfile);
     }
 
-        /* ==================================================================
-         * DECRYPT PATH
-         * ==================================================================
-         *  1. header_decode() pops the IV + 10 encrypted header blocks,
-         *     deciphers them in CBC mode, and checks the magic phrase
-         *     "XTEAFILE".
-         *       magic matches  -> key is correct, hdr is filled
-         *       magic mismatch -> wrong passphrase (or wrong rounds) -- abort
-         *  2. Decipher the remaining data blocks.
-         *  3. Write exactly original_size bytes to strip zero-padding.
-         *  4. Display the recovered metadata.
-         * ================================================================== */
+    /* ==================================================================
+     * DECRYPT PATH
+     * ==================================================================
+     *  1. header_decode() pops the IV + 10 encrypted header blocks,
+     *     deciphers them in CBC mode, and checks the magic phrase
+     *     "XTEAFILE".
+     *       magic matches  -> key is correct, hdr is filled
+     *       magic mismatch -> wrong passphrase (or wrong rounds) -- abort
+     *  2. Decipher the remaining data blocks.
+     *  3. Write exactly original_size bytes to strip zero-padding.
+     *  4. Display the recovered metadata.
+     * ================================================================== */
     else if (mode == 2 || mode == 6) /* Mode == Decrypt */
     {
         int decode_result;
@@ -232,7 +232,8 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
                (unsigned long)hdr.original_size);
 
         /* Pop data IV and decipher data blocks */
-        if (pop_block(&list, data_iv) != 0) {
+        if (pop_block(&list, data_iv) != 0)
+        {
             fprintf(stderr, "ERROR: missing data IV block\n");
             list_free(list);
             return 1;
@@ -258,6 +259,6 @@ int do_encryption(const int mode, const char *infile, const char *outfile,
 
     printf("\n\n");
     list_free(list);
-    
+
     return 0;
 }
