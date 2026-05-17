@@ -62,13 +62,14 @@ static int parse_args(int argc, char *argv[], int *mode, char **infile,
  * ------------------------------------------------------------------------- */
 int main(int argc, char *argv[])
 {
-
+    /* variables to control main function */
     int mode = MODE_NONE;
     char *infile = NULL;
     char *tempfile = "tempfile.tmp";
     char *outfile = NULL;
     char *passphrase = NULL;
     unsigned int rounds = ROUNDS_DEFAULT;
+    
 
     /* Parse arguments */
     if (parse_args(argc, argv, &mode, &infile, &outfile, &passphrase,
@@ -78,6 +79,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* we set the mode via the arg flags and then use conditionals to control
+       which methods to call to modify files */
     if (mode == MODE_ENCRYPT || mode == MODE_DECRYPT)
     {
         do_encryption(mode, infile, outfile, passphrase, rounds);
@@ -88,8 +91,8 @@ int main(int argc, char *argv[])
         do_compression(mode, infile, outfile);
     }
 
-    if (mode == MODE_COMPRESS_AND_ENCRYPT)
-    {
+    /* double mode requires tempfile inbetween compression/encryption, is removed afterwards */
+    if(mode == MODE_COMPRESS_AND_ENCRYPT){
         do_compression(mode, infile, tempfile);
         do_encryption(mode, tempfile, outfile, passphrase, rounds);
         remove(tempfile);

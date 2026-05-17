@@ -8,40 +8,48 @@
 #define MALLOC_SIZE 10000000
 /*******************************************************************************
  * Header files & Method lists
- *******************************************************************************/
-#include <stdio.h>
-/* fopen(), fsize(), ftell(), fseek(), fread(), fclose(). fwrite() */
-#include <stdlib.h>
-/* FILE, malloc(), */
-#include <math.h>
-/* pow() */
+*******************************************************************************/
+#include <stdio.h> 
+    /* fopen(), fsize(), ftell(), fseek(), fread(), fclose(), fwrite(), ssize_t */
+#include <stdlib.h> 
+    /* FILE, malloc(), */
+#include <math.h> 
+    /* pow() */
 #include <string.h>
-/* memcpy() */
-/*stdint.h is used to simplify types for compression - could use primitives
- * instead */
-#include <stdint.h>
-/* uint8, uint16, uint32 */
+    /* memcpy() */
+
 
 /*******************************************************************************
  * Function prototypes
  *******************************************************************************/
 /*Compression / decompression algorithms*/
-uint32_t lz77_compress(const uint8_t *uncompressed_text,
-                       const uint32_t uncompressed_size,
-                       uint8_t *compressed_text,
-                       const uint8_t token_length_width);
-uint32_t lz77_decompress(const uint8_t *compressed_text,
-                         uint8_t *uncompressed_text);
+unsigned int lz77_compress (
+    const unsigned char *uncompressed_text, 
+    const unsigned int uncompressed_size, 
+    unsigned char *compressed_text, 
+    const unsigned char token_length_width);
+unsigned int lz77_decompress (
+    const unsigned char *compressed_text, 
+    unsigned char *uncompressed_text);
 
 /* File handling functions */
-long fsize(FILE *in); /* Helper function */
-uint32_t lz77_compress_until_optimised(
-    uint8_t *uncompressed_text, uint32_t uncompressed_size,
-    uint8_t *compressed_text, const size_t malloc_size); /* Helper function */
-uint32_t file_lz77_compress(const char *filename_in, const char *filename_out,
-                            const size_t malloc_size);
-uint32_t file_lz77_decompress(const char *filename_in,
-                              const char *filename_out);
-int do_compression(const int mode, const char *infile, const char *outfile);
+unsigned long fsize (FILE *in); /* Helper function */
+unsigned int lz77_compress_until_optimised(
+    unsigned char* uncompressed_text, 
+    unsigned int uncompressed_size, 
+    unsigned char* compressed_text, 
+    const size_t malloc_size); /* Helper function */
+unsigned int file_lz77_compress (
+    const char *filename_in, 
+    const char *filename_out, 
+    const size_t malloc_size);
+unsigned int file_lz77_decompress (
+    const char *filename_in, 
+    const char *filename_out);
+unsigned int do_compression(
+    const unsigned int mode, 
+    const char *infile, 
+    const char *outfile);
+
 
 #endif
