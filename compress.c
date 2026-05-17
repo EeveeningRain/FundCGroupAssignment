@@ -37,7 +37,7 @@
  * There is also a new optimiser function below which uses existing functions and finds the best match 
  * size for optimal compression of files to use in the broader program.
  * 
- * lz77_compress takes in a text (uint8_t*) and it's size, and then outputs a string which represents
+ * lz77_compress takes in a text (unsigned char*) and it's size, and then outputs a string which represents
  * the compressed text. Ptr length width controls how large a match can be.
  * 
  * lz77_decompress takes in a compressed lz77 text and decompresses it by looping through progressively
@@ -46,30 +46,30 @@
  ****************************************************************************************************/
 
 /******************************************************************************************
- * Main lempel-ziv 77 compression algorithm function, takes in an uncompressed text via a char*
+ * Main lempel-ziv 77 compression algorithm function, takes in an uncompressed text via a unsigned char*
  * and then compresses it by replacing seen sequences with byte data representing instructions
  * to copy that sequence. Compression works as the space required for a match signature is less
  * than the data itself, but only works well on binary data or large text data due to the need
  * for lots of repeating data.
  * 
  * inputs:
- * - uint8* (char) uncompressed_text, uint32_t uncompressed_size (error handling),
- *   uint8* (char) compressed_text, uint8_t pointer_length_width (size of matches)
+ * - uint8* (unsigned char) uncompressed_text, unsigned int uncompressed_size (error handling),
+ *   uint8* (unsigned char) compressed_text, unsigned char pointer_length_width (size of matches)
  * outputs:
- * - compressed_text is filled with data, uint32_t to represent compressed size
+ * - compressed_text is filled with data, unsigned int to represent compressed size
 *******************************************************************************************/
-uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompressed_size, uint8_t *compressed_text, const uint8_t token_length_width)
+unsigned int lz77_compress (const unsigned char *uncompressed_text, const unsigned int uncompressed_size, unsigned char *compressed_text, const unsigned char token_length_width)
 {
     /* variable declarations for algorithm */
-    uint16_t token_ptr, token_copy_pos, temp_token_copy_pos, token_length, temp_token_length;
-    uint32_t data_ptr, output_size, buffer_pos, token_lookahead_ref, look_behind, look_ahead;
+    unsigned short token_ptr, token_copy_pos, temp_token_copy_pos, token_length, temp_token_length;
+    unsigned int data_ptr, output_size, buffer_pos, token_lookahead_ref, look_behind, look_ahead;
 
     /* consts for the max parameters of a token (based on token_length_width param) */
-    const uint16_t TOKEN_COPY_POS_MAX = 1U << (16 - token_length_width);
-    const uint16_t TOKEN_LENGTH_MAX = 1U << (token_length_width);
+    const unsigned short TOKEN_COPY_POS_MAX = 1U << (16 - token_length_width);
+    const unsigned short TOKEN_LENGTH_MAX = 1U << (token_length_width);
 
     /* Storing the uncompressed size in the first 4 bytes of the compressed text */
-    *((uint32_t *) compressed_text) = uncompressed_size;
+    *((unsigned int *) compressed_text) = uncompressed_size;
 
     /*Storing the token_length_width at the 5th byte of the compressed text */
     *(compressed_text + 4) = token_length_width;
@@ -119,7 +119,7 @@ uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompr
         }
 
         /* once token is built, write it in to the compressed text and move data_ptr forward*/
-        *((uint16_t *) (compressed_text + data_ptr)) = token_ptr;
+        *((unsigned short *) (compressed_text + data_ptr)) = token_ptr;
         data_ptr += 2;
 
         /* add the look ahead byte and then update output size */
@@ -138,26 +138,26 @@ uint32_t lz77_compress (const uint8_t *uncompressed_text, const uint32_t uncompr
  * inputs:
  * - File ptr *in
  * outputs:
- * - Size of file as a long
+ * - Size of file as a unsigned long
 *******************************************************************************************/
-uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_text)
+unsigned int lz77_decompress (const unsigned char *compressed_text, unsigned char *uncompressed_text)
 {
     /* variable declarations for algorithm */
-    uint8_t token_length_width; /*token length width, how much to copy in to a token*/
+    unsigned char token_length_width; /*token length width, how much to copy in to a token*/
 
     /* token_ptr stores individual tokens, token length / pos specifies how far back
        and how much to copy for a match, mask is used to extract length bits */
-    uint16_t token_ptr, token_length, token_copy_pos, token_length_mask;
+    unsigned short token_ptr, token_length, token_copy_pos, token_length_mask;
 
     /*buffer_pos stores position in our "stream" of compressed text, data_ptr is
       how far we are in through the data in bytes, copy offset used to read back */
-    uint32_t buffer_pos, data_ptr, copy_offset, uncompressed_size;
+    unsigned int buffer_pos, data_ptr, copy_offset, uncompressed_size;
 
     /* uncompressed size is stored in first 4 bytes of compressed text, grab data */
-    uncompressed_size = (uint32_t)compressed_text[0] |
-        ((uint32_t)compressed_text[1] << 8) |
-        ((uint32_t)compressed_text[2] << 16) |
-        ((uint32_t)compressed_text[3] << 24);
+    uncompressed_size = (unsigned int)compressed_text[0] |
+        ((unsigned int)compressed_text[1] << 8) |
+        ((unsigned int)compressed_text[2] << 16) |
+        ((unsigned int)compressed_text[3] << 24);
 
     /* fifth byte is the token length - how large matches are in the compression*/
     token_length_width = *(compressed_text + 4);
@@ -168,12 +168,12 @@ uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_
     /* used to extract length from a token; bit math */
     token_length_mask = (1U << token_length_width) - 1;
 
-    /* we keep looping as long as our position is less than the final, uncompressed size */
+    /* we keep looping as unsigned unsigned long as our position is less than the final, uncompressed size */
     buffer_pos = 0;
     while(buffer_pos < uncompressed_size)
     {
         /* read in a token at data_ptr and move cursor forward */
-        token_ptr = *((uint16_t *)(compressed_text + data_ptr));
+        token_ptr = *((unsigned short *)(compressed_text + data_ptr));
         data_ptr += 2;
 
         /* use mask and length to read in the two fields in a token */
@@ -232,11 +232,11 @@ uint32_t lz77_decompress (const uint8_t *compressed_text, uint8_t *uncompressed_
  * inputs:
  * - File ptr *in
  * outputs:
- * - Size of file as a long
+ * - Size of file as a unsigned long
 *******************************************************************************************/
-long fsize (FILE *in)
+unsigned long fsize (FILE *in)
 {
-    long pos, length;
+    unsigned long pos, length;
     pos = ftell(in);
     fseek(in, 0L, SEEK_END);
     length = ftell(in);
@@ -246,18 +246,18 @@ long fsize (FILE *in)
 
 /* CONSIDER NEW HELPER TO HELP OPTIMISE POINTER LENGTH!! (as a good addition) */
 
-uint32_t lz77_compress_until_optimised(uint8_t* uncompressed_text, uint32_t uncompressed_size, uint8_t* compressed_text, const size_t malloc_size){
+unsigned int lz77_compress_until_optimised(unsigned char* uncompressed_text, unsigned int uncompressed_size, unsigned char* compressed_text, const size_t malloc_size){
     /* magic numbers - found via testing */
-    const uint32_t MAX_BITSIZE = 16;
-    const uint32_t MIN_BITSIZE = 4;
+    const unsigned int MAX_BITSIZE = 16;
+    const unsigned int MIN_BITSIZE = 4;
 
-    uint8_t* prev_text = malloc(malloc_size);
-    uint32_t prev_size = UINT32_MAX;
+    unsigned char* prev_text = malloc(malloc_size);
+    unsigned int prev_size = __INT32_MAX__;
     
-    uint32_t cur_size = 0;
+    unsigned int cur_size = 0;
 
     /* iterate over bit sizes until we find the next bitsize increases size instead of decrease - return previous one instead */
-    uint32_t i = MIN_BITSIZE;
+    unsigned int i = MIN_BITSIZE;
     for(; i < MAX_BITSIZE; ++i){
         printf("Compressing to bitsize: %d\n", i);
         cur_size = lz77_compress(uncompressed_text,uncompressed_size, compressed_text, i);
@@ -294,17 +294,17 @@ uint32_t lz77_compress_until_optimised(uint8_t* uncompressed_text, uint32_t unco
  * larger pointer lengths to optimise the compression size.
  * 
  * inputs:
- * - char* filename_in, char* filename_out (file IO), size_t malloc_size (max size of new file),
- *   uint8_t pointer_length_width used for algorithm (how far to check for match)
+ * - unsigned char* filename_in, unsigned char* filename_out (file IO), size_t malloc_size (max size of new file),
+ *   unsigned char pointer_length_width used for algorithm (how far to check for match)
  * outputs:
- * - compressed file, uint32_t size of compressed file
+ * - compressed file, unsigned int size of compressed file
 *******************************************************************************************/
-uint32_t file_lz77_compress (const char *filename_in, const char *filename_out, const size_t malloc_size)
+unsigned int file_lz77_compress (const char *filename_in, const char *filename_out, const size_t malloc_size)
 {
     /* vars for use in method, *in and *out are the files, we have pointers for the texts themselves, and then sizes*/
     FILE *in, *out;
-    uint8_t *uncompressed_text, *compressed_text;
-    uint32_t uncompressed_size, compressed_size;
+    unsigned char *uncompressed_text, *compressed_text;
+    unsigned int uncompressed_size, compressed_size;
 
 
     /* try to open the file, if it fails, immediately return 0 */
@@ -345,16 +345,16 @@ uint32_t file_lz77_compress (const char *filename_in, const char *filename_out, 
  * new file.
  * 
  * inputs:
- * - char* filename_in (compressed), char* filename_out (uncompressed)
+ * - unsigned char* filename_in (compressed), unsigned char* filename_out (uncompressed)
  * outputs:
- * - uncompressed file, uint32_t size of uncompressed file
+ * - uncompressed file, unsigned int size of uncompressed file
 *******************************************************************************************/
-uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out)
+unsigned int file_lz77_decompress (const char *filename_in, const char *filename_out)
 {
     /* vars for use in method, *in and *out are the files themselves, then the texts and sizes*/
     FILE *in, *out;
-    uint32_t compressed_size, uncompressed_size;
-    uint8_t *compressed_text, *uncompressed_text;
+    unsigned int compressed_size, uncompressed_size;
+    unsigned char *compressed_text, *uncompressed_text;
 
     /* try to open the compressed file, if fail return 0 */
     in = fopen(filename_in, "rb");
@@ -368,19 +368,19 @@ uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out
     compressed_text = malloc(compressed_size);
 
     /* if read fails, return 0 */
-    if(fread(compressed_text, 1, compressed_size, in) != compressed_size){
+    if(compressed_size != fread(compressed_text, 1, compressed_size, in)){
         printf("File reading failed, does not equal expected size!");
         return 1;
     }
     fclose(in);
 
     /* compression has stored the compressed size in the first 4 bytes of the compressed text, read these in */
-    uncompressed_size = *((uint32_t *) compressed_text);
+    uncompressed_size = *((unsigned int *) compressed_text);
     /* and malloc */
     uncompressed_text = malloc(uncompressed_size);
 
     /* try to decompress, if it fails then return 0 */
-    if(lz77_decompress(compressed_text, uncompressed_text) != uncompressed_size){
+    if(uncompressed_size != lz77_decompress(compressed_text, uncompressed_text)){
         printf("Decompression failed! Uncompressed size (%d) did not equal returned size!\n", uncompressed_size);
         return 1;
     }
@@ -391,7 +391,7 @@ uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out
         printf("Filename invalid! filename_out: %s\n", filename_out);
         return 1;
     }
-    if(fwrite(uncompressed_text, 1, uncompressed_size, out) != uncompressed_size){
+    if(uncompressed_size != fwrite(uncompressed_text, 1, uncompressed_size, out)){
         printf("Written text unequal to uncompressed size! Decompression must have failed.\n");
         return 1;
     }
@@ -407,13 +407,13 @@ uint32_t file_lz77_decompress (const char *filename_in, const char *filename_out
  * with the other functions in this file to do compression for the main file.
  * 
  * inputs:
- * - const int mode, const char* infile, const char* outfile (in/outfile is filename)
+ * - const unsigned int mode, const unsigned char* infile, const unsigned char* outfile (in/outfile is filename)
  * outputs:
- * - int success (0), failure (1)
+ * - unsigned int success (0), failure (1)
 *******************************************************************************************/
-uint32_t do_compression(const int mode, const char *infile, const char *outfile){
+unsigned int do_compression(const unsigned int mode, const char *infile, const char *outfile){
     /* store success or failure to return later */
-    int result = 0;
+    unsigned int result = 0;
     if(mode == 3 || mode == 5){ /* compress or compress & encrypt */
         result = file_lz77_compress(infile, outfile, MALLOC_SIZE);
     }
